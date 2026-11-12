@@ -1,0 +1,53 @@
+<svg width="800" height="240" viewBox="0 0 800 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="banner-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="40%" stop-color="#7C3AED" />
+      <stop offset="75%" stop-color="#C026D3" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    <linearGradient id="orb1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#818CF8" stop-opacity="0.2" />
+    </linearGradient>
+    <linearGradient id="orb2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F472B6" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#FBBF24" stop-opacity="0.2" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- Base gradient background -->
+  <rect width="800" height="240" rx="0" fill="url(#banner-bg)" />
+
+  <!-- Abstract glowing orbs -->
+  <circle cx="150" cy="50" r="140" fill="url(#orb1)" filter="blur(40px)" />
+  <circle cx="680" cy="180" r="160" fill="url(#orb2)" filter="blur(50px)" />
+  <circle cx="400" cy="120" r="100" fill="url(#glow)" filter="blur(30px)" />
+
+  <!-- Subtle grid overlay -->
+  <rect width="800" height="240" fill="url(#grid)" />
+
+  <!-- Dynamic wavy lines -->
+  <path d="M-50 180 C 150 120, 250 220, 450 150 C 650 80, 750 190, 850 140" stroke="rgba(255, 255, 255, 0.25)" stroke-width="2" fill="none" />
+  <path d="M-50 200 C 180 140, 280 240, 480 170 C 680 100, 780 210, 850 160" stroke="rgba(255, 255, 255, 0.15)" stroke-width="1.5" fill="none" />
+
+  <!-- Floating decorative stars/crosses -->
+  <g fill="rgba(255, 255, 255, 0.7)">
+    <circle cx="90" cy="60" r="2.5" />
+    <circle cx="240" cy="40" r="1.5" />
+    <circle cx="580" cy="50" r="2" />
+    <circle cx="720" cy="70" r="3" />
+    <circle cx="670" cy="140" r="1.5" />
+    <circle cx="140" cy="150" r="2" />
+    <path d="M 730 40 L 734 40 M 732 38 L 732 42" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+    <path d="M 210 160 L 216 160 M 213 157 L 213 163" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+    <path d="M 450 45 L 454 45 M 452 43 L 452 47" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+  </g>
+</svg>
