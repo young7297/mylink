@@ -1,0 +1,60 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Hard shadow filter -->
+    <filter id="hard-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="6" dy="6" stdDeviation="0" flood-color="#000000" flood-opacity="1"/>
+    </filter>
+  </defs>
+
+  <!-- Background Pop Circle with Thick Black Border -->
+  <circle cx="120" cy="120" r="110" fill="#DDD6FE" stroke="#000000" stroke-width="5" />
+
+  <!-- Back Hair -->
+  <path d="M55 130 C50 185, 68 215, 82 225 L158 225 C172 215, 190 185, 185 130 C185 68, 55 68, 55 130 Z" fill="#18181B" stroke="#000000" stroke-width="4" />
+
+  <!-- Neck -->
+  <rect x="105" y="138" width="30" height="32" rx="4" fill="#FBD5C0" stroke="#000000" stroke-width="4" />
+
+  <!-- Neobrutalist Vibrant Clothes (Mint Hoodie) -->
+  <path d="M50 225 C52 184, 78 162, 102 158 L112 186 L128 186 L138 158 C162 162, 188 184, 190 225 Z" fill="#4ADE80" stroke="#000000" stroke-width="4" />
+  <!-- Hoodie Collar / V-fold -->
+  <path d="M102 158 L120 188 L138 158" stroke="#000000" stroke-width="4" fill="#22C55E" />
+  <!-- Drawstrings -->
+  <path d="M112 186 L110 208 M128 186 L130 208" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Face / Head -->
+  <rect x="86" y="78" width="68" height="78" rx="34" fill="#FFE0CE" stroke="#000000" stroke-width="4" />
+
+  <!-- Cheeks Blush (Bold Pink) -->
+  <rect x="94" y="124" width="14" height="8" rx="4" fill="#F472B6" stroke="#000000" stroke-width="2" />
+  <rect x="132" y="124" width="14" height="8" rx="4" fill="#F472B6" stroke="#000000" stroke-width="2" />
+
+  <!-- Eyes -->
+  <circle cx="103" cy="114" r="5" fill="#000000" />
+  <circle cx="137" cy="114" r="5" fill="#000000" />
+  <!-- Eye highlights -->
+  <circle cx="101.5" cy="112" r="1.8" fill="#FFFFFF" />
+  <circle cx="135.5" cy="112" r="1.8" fill="#FFFFFF" />
+
+  <!-- Thick Eyebrows -->
+  <rect x="96" y="102" width="15" height="4" rx="2" fill="#000000" transform="rotate(-5 96 102)" />
+  <rect x="129" y="100" width="15" height="4" rx="2" fill="#000000" transform="rotate(5 129 100)" />
+
+  <!-- Wide Cheerful Smile -->
+  <path d="M110 130 Q120 142 130 130" stroke="#000000" stroke-width="3.5" stroke-linecap="round" fill="#E11D48" />
+
+  <!-- Thick Chunky Glasses (Signature Neobrutalist Black/Cyan) -->
+  <rect x="91" y="105" width="24" height="18" rx="6" fill="#38BDF8" fill-opacity="0.3" stroke="#000000" stroke-width="4" />
+  <rect x="125" y="105" width="24" height="18" rx="6" fill="#38BDF8" fill-opacity="0.3" stroke="#000000" stroke-width="4" />
+  <path d="M115 113 L125 113" stroke="#000000" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Bangs / Front Hair -->
+  <path d="M82 92 C88 70, 152 70, 158 92 C160 105, 156 118, 153 120 C151 100, 142 88, 128 90 C116 91, 112 98, 106 98 C97 98, 91 104, 87 120 C85 118, 80 105, 82 92 Z" fill="#18181B" stroke="#000000" stroke-width="4" />
+
+  <!-- Retro Hairclip Star Sticker -->
+  <g transform="translate(144, 78) rotate(15)">
+    <rect x="-2" y="-2" width="22" height="22" fill="#000000" rx="3" />
+    <rect x="0" y="0" width="18" height="18" fill="#FDE047" stroke="#000000" stroke-width="2" rx="2" />
+    <text x="9" y="13" font-family="sans-serif" font-weight="900" font-size="11" fill="#000000" text-anchor="middle">★</text>
+  </g>
+</svg>

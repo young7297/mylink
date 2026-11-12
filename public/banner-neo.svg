@@ -1,0 +1,74 @@
+<svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Checkerboard pattern -->
+    <pattern id="checker" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#000000" />
+      <rect x="10" width="10" height="10" fill="#FFFFFF" />
+      <rect y="10" width="10" height="10" fill="#FFFFFF" />
+      <rect x="10" y="10" width="10" height="10" fill="#000000" />
+    </pattern>
+    <!-- Dot pattern -->
+    <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="2" fill="#000000" fill-opacity="0.3" />
+    </pattern>
+  </defs>
+
+  <!-- Base Canary Yellow Background with Thick Border -->
+  <rect width="800" height="260" fill="#FEF08A" />
+  <rect width="800" height="260" fill="url(#dots)" />
+
+  <!-- Diagonal Graphic Blocks -->
+  <!-- Hot Pink Angle Block -->
+  <path d="M-10 0 L 280 0 L 200 260 L -10 260 Z" fill="#F472B6" stroke="#000000" stroke-width="4" />
+  
+  <!-- Checkerboard Ribbon Accent -->
+  <rect x="220" y="-10" width="40" height="290" fill="url(#checker)" stroke="#000000" stroke-width="4" transform="rotate(12 240 130)" />
+
+  <!-- Electric Cyan Accent Block -->
+  <path d="M 580 0 L 810 0 L 810 260 L 520 260 Z" fill="#38BDF8" stroke="#000000" stroke-width="4" />
+
+  <!-- Mint Green Retro Badge (Top Right) -->
+  <g transform="translate(640, 25)">
+    <rect x="0" y="0" width="130" height="42" rx="4" fill="#4ADE80" stroke="#000000" stroke-width="3" />
+    <text x="65" y="27" font-family="monospace, sans-serif" font-weight="900" font-size="14" fill="#000000" text-anchor="middle">★ DEV_MODE ★</text>
+  </g>
+
+  <!-- Retro Sparkle / Starburst (Left) -->
+  <g transform="translate(70, 70) rotate(-8)">
+    <rect x="-4" y="-4" width="96" height="96" fill="#000000" rx="8" />
+    <rect x="0" y="0" width="88" height="88" fill="#FBBF24" stroke="#000000" stroke-width="3" rx="6" />
+    <path d="M44 14 L50 36 L72 44 L50 52 L44 74 L38 52 L16 44 L38 36 Z" fill="#000000" />
+    <circle cx="44" cy="44" r="5" fill="#FFFFFF" />
+  </g>
+
+  <!-- Central Neobrutalist Title Sticker -->
+  <g transform="translate(320, 75) rotate(-3)">
+    <!-- Hard shadow -->
+    <rect x="8" y="8" width="280" height="74" rx="8" fill="#000000" />
+    <!-- Sticker base -->
+    <rect x="0" y="0" width="280" height="74" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="4" />
+    <!-- Tape at top -->
+    <rect x="100" y="-12" width="80" height="24" fill="#FEF08A" stroke="#000000" stroke-width="2" transform="rotate(2 140 0)" opacity="0.9" />
+    <text x="140" y="38" font-family="system-ui, sans-serif" font-weight="900" font-size="22" fill="#000000" text-anchor="middle" letter-spacing="1">YOON DAYOUNG</text>
+    <text x="140" y="58" font-family="monospace, sans-serif" font-weight="700" font-size="12" fill="#4F46E5" text-anchor="middle">FRONTEND DEVELOPER 🚀</text>
+  </g>
+
+  <!-- Retro Smile Face Sticker (Bottom Center) -->
+  <g transform="translate(480, 175) rotate(10)">
+    <circle cx="34" cy="34" r="32" fill="#000000" />
+    <circle cx="30" cy="30" r="30" fill="#FDE047" stroke="#000000" stroke-width="3" />
+    <ellipse cx="21" cy="23" rx="3.5" ry="5.5" fill="#000000" />
+    <ellipse cx="39" cy="23" rx="3.5" ry="5.5" fill="#000000" />
+    <path d="M18 36 Q30 48 42 36" stroke="#000000" stroke-width="3.5" stroke-linecap="round" fill="none" />
+  </g>
+
+  <!-- Floating Star stickers -->
+  <g fill="#000000">
+    <path d="M 180 20 L 183 30 L 193 33 L 183 36 L 180 46 L 177 36 L 167 33 L 177 30 Z" />
+    <path d="M 590 190 L 592 197 L 599 199 L 592 201 L 590 208 L 588 201 L 581 199 L 588 197 Z" />
+    <path d="M 680 130 L 684 142 L 696 146 L 684 150 L 680 162 L 676 150 L 664 146 L 676 142 Z" fill="#F43F5E" stroke="#000000" stroke-width="2" />
+  </g>
+
+  <!-- Outer frame border -->
+  <rect x="2" y="2" width="796" height="256" stroke="#000000" stroke-width="4" fill="none" />
+</svg>
