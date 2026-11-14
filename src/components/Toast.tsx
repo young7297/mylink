@@ -11,53 +11,46 @@ export interface ToastProps {
 
 export default function Toast({
   message,
-  type = "success",
   isVisible,
   onClose,
 }: ToastProps) {
   if (!isVisible) return null;
 
-  const typeConfig = {
-    success: {
-      bg: "bg-[#4ADE80]",
-      sticker: "★ SUCCESS",
-    },
-    error: {
-      bg: "bg-[#FB7185]",
-      sticker: "✕ ERROR",
-    },
-    info: {
-      bg: "bg-[#FDE047]",
-      sticker: "✦ NOTICE",
-    },
-  };
-
-  const { bg, sticker } = typeConfig[type] || typeConfig.info;
-
   return (
     <aside
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
-      style={{ maxWidth: "92vw" }}
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
+      style={{ maxWidth: "90vw", width: "420px" }}
     >
-      <div
-        className={`${bg} border-[3px] border-black text-black px-5 py-3 rounded-xl shadow-[5px_5px_0px_0px_#000] flex items-center gap-3 transition-transform animate-bounce duration-300 font-sans`}
-      >
-        <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black text-white shrink-0 tracking-wider">
-          {sticker}
-        </span>
-        <span className="text-sm font-extrabold text-black tracking-tight">
-          {message}
-        </span>
-        {onClose && (
-          <button
-            onClick={onClose}
-            aria-label="알림 닫기"
-            className="ml-2 w-6 h-6 rounded-md bg-black text-white flex items-center justify-center font-black text-xs hover:bg-neutral-800 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer shrink-0"
-          >
-            ✕
-          </button>
-        )}
+      <div className="bg-[#7a8aba] bevel-plate shadow-xl p-1 text-[#21242e]">
+        {/* Carbon Top bar */}
+        <div className="carbon-halftone px-2 py-1 flex items-center justify-between text-white border-b border-[#3d4f97]">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#f68d1f] inline-block animate-pulse" />
+            <span className="text-[10px] font-bold tracking-[0.5px] uppercase text-[#e48600]">
+              SYSTEM MESSAGE
+            </span>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="w-4 h-4 bg-[#21242e] border border-[#3d4f97] text-white flex items-center justify-center font-bold text-[9px] hover:bg-[#e60012] cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Message Body Inset */}
+        <div className="bg-[#dedede] inset-plate-subtle p-2.5 flex items-center gap-2.5 mt-1">
+          <div className="w-5 h-5 rounded-full bg-[#f68d1f] text-white flex items-center justify-center font-bold text-[10px] shrink-0 bevel-button">
+            ▶
+          </div>
+          <span className="text-xs font-bold text-[#21242e] leading-snug">
+            {message}
+          </span>
+        </div>
       </div>
     </aside>
   );
