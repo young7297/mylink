@@ -490,6 +490,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onAddLink={handleAddLink}
+        existingLinks={data?.links}
       />
 
       {/* TDS 스타일 토스트 알림 */}
