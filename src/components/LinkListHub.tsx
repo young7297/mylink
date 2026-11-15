@@ -5,19 +5,17 @@ import Link from "next/link";
 import { LinkItem, MyLinkData } from "@/types/link";
 import {
   MOCK_MYLINK_DATA,
-  MOCK_DESIGNER_DATA,
   CATEGORY_OPTIONS,
 } from "@/data/mockLinks";
 import ProfileHeader from "@/components/ProfileHeader";
 import LinkCard from "@/components/LinkCard";
 import Toast from "@/components/Toast";
-import { Search, X, Share2, Sparkles } from "@/components/icons";
+import { Search, X, Share2 } from "@/components/icons";
 
 // TDS 기반 UI 컴포넌트
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -75,8 +73,6 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       if (!loadedData) {
         if (targetSlug === "dayoung") {
           loadedData = MOCK_MYLINK_DATA;
-        } else if (targetSlug === "jisoo-design") {
-          loadedData = MOCK_DESIGNER_DATA;
         } else {
           // 일치하는 데이터 없음 -> 404
           setIsNotFound(true);
@@ -131,11 +127,6 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   const inactiveCount = useMemo(() => {
     if (!data || !data.links) return 0;
     return data.links.filter((l) => l.active === false).length;
-  }, [data]);
-
-  const activeCount = useMemo(() => {
-    if (!data || !data.links) return 0;
-    return data.links.filter((l) => l.active !== false).length;
   }, [data]);
 
   const handleLinkOpen = (link: LinkItem) => {
@@ -223,40 +214,16 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       {/* ========================================================= */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70">
         <div className="max-w-[520px] mx-auto h-14 px-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-1.5 text-[#191f28] font-bold text-lg hover:text-[#3182f6] transition-colors">
-            <span className="w-6 h-6 rounded-lg bg-[#3182f6] text-white flex items-center justify-center text-xs font-black">
+          <Link href="/" className="flex items-center gap-2 text-[#191f28] font-bold text-lg hover:text-[#3182f6] transition-colors">
+            <span className="w-7 h-7 rounded-xl bg-[#3182f6] text-white flex items-center justify-center text-xs font-black shadow-sm">
               M
             </span>
             <span>마이링크</span>
           </Link>
 
-          {/* 프로필 전환 바로가기 칩 */}
-          <div className="flex items-center gap-1 bg-white p-1 rounded-full border border-[#e5e8eb] shadow-sm">
-            <Link href="/dayoung">
-              <button
-                type="button"
-                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-                  data.slug === "dayoung"
-                    ? "bg-[#3182f6] text-white font-semibold"
-                    : "text-[#6b7684] hover:text-[#191f28]"
-                }`}
-              >
-                다영
-              </button>
-            </Link>
-            <Link href="/jisoo-design">
-              <button
-                type="button"
-                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-                  data.slug === "jisoo-design"
-                    ? "bg-[#3182f6] text-white font-semibold"
-                    : "text-[#6b7684] hover:text-[#191f28]"
-                }`}
-              >
-                지수
-              </button>
-            </Link>
-          </div>
+          <span className="text-xs text-[#8b95a1] font-medium bg-white px-2.5 py-1 rounded-full border border-[#e5e8eb]">
+            윤다영의 링크
+          </span>
         </div>
       </header>
 

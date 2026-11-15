@@ -6,7 +6,6 @@ import LinkListHub from "@/components/LinkListHub";
 export function generateStaticParams() {
   return [
     { slug: "dayoung" },
-    { slug: "jisoo-design" },
     { slug: "links" },
   ];
 }
