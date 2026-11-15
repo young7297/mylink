@@ -2,16 +2,27 @@
 
 import React from "react";
 import { LinkItem } from "@/types/link";
-import { getLinkIcon, getCategoryBadgeStyle, ChevronRight } from "@/components/icons";
+import {
+  getLinkIcon,
+  getCategoryBadgeStyle,
+  ChevronRight,
+  Trash2,
+} from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 
 interface LinkCardProps {
   link: LinkItem;
   index: number;
   onOpenLink?: (link: LinkItem) => void;
+  onDeleteLink?: (link: LinkItem) => void;
 }
 
-export default function LinkCard({ link, index, onOpenLink }: LinkCardProps) {
+export default function LinkCard({
+  link,
+  index,
+  onOpenLink,
+  onDeleteLink,
+}: LinkCardProps) {
   const badgeStyle = getCategoryBadgeStyle(link.category);
   const isActive = link.active !== false;
 
@@ -105,8 +116,22 @@ export default function LinkCard({ link, index, onOpenLink }: LinkCardProps) {
           </div>
         </div>
 
-        {/* 우측: TDS Chevron Right 화살표 */}
-        <div className="shrink-0 flex items-center justify-center pl-1">
+        {/* 우측: 삭제 액션 (선택) & TDS Chevron Right 화살표 */}
+        <div className="shrink-0 flex items-center justify-center gap-1 pl-1">
+          {onDeleteLink && (
+            <button
+              type="button"
+              aria-label="링크 삭제"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteLink(link);
+              }}
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 rounded-lg text-[#8b95a1] hover:text-[#f04452] hover:bg-[#feecee] transition-all cursor-pointer"
+              title="링크 삭제"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
           <ChevronRight className="w-5 h-5 text-[#b0b8c1] group-hover:text-[#3182f6] group-hover:translate-x-0.5 transition-all" />
         </div>
       </div>

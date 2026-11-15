@@ -9,8 +9,9 @@ import {
 } from "@/data/mockLinks";
 import ProfileHeader from "@/components/ProfileHeader";
 import LinkCard from "@/components/LinkCard";
+import AddLinkDialog from "@/components/AddLinkDialog";
 import Toast from "@/components/Toast";
-import { Search, X, Share2 } from "@/components/icons";
+import { Search, X, Share2, Plus } from "@/components/icons";
 
 // TDS 기반 UI 컴포넌트
 import { Card } from "@/components/ui/card";
@@ -36,13 +37,87 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   // Toast 상태
   const [toastMessage, setToastMessage] = useState<string>("");
   const [isToastVisible, setIsToastVisible] = useState<boolean>(false);
+  const [toastAction, setToastAction] = useState<
+    { label: string; onClick: () => void } | undefined
+  >(undefined);
 
-  const showToast = (message: string) => {
+  const showToast = (
+    message: string,
+    action?: { label: string; onClick: () => void }
+  ) => {
     setToastMessage(message);
+    setToastAction(action);
     setIsToastVisible(true);
     setTimeout(() => {
       setIsToastVisible(false);
-    }, 2800);
+    }, action ? 3500 : 2800);
+  };
+
+  // 링크 추가 다이얼로그 상태
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+
+  // 로컬 상태 링크 추가 핸들러
+  const handleAddLink = (
+    newLinkData: Omit<LinkItem, "id" | "order" | "createdAt">
+  ) => {
+    const newLink: LinkItem = {
+      ...newLinkData,
+      id: `link-${Date.now()}`,
+      order: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    setData((prev) => {
+      if (!prev) return prev;
+      const updatedLinks = [newLink, ...(prev.links || [])];
+      const updatedData: MyLinkData = { ...prev, links: updatedLinks };
+
+      try {
+        localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+      } catch (e) {
+        console.warn("localStorage save error:", e);
+      }
+
+      return updatedData;
+    });
+
+    showToast(`'${newLink.title}' 링크가 성공적으로 추가되었어요!`);
+  };
+
+  // 링크 삭제 핸들러 (로컬 상태 + PRD 시나리오 E: 실행 취소 Undo 지원)
+  const handleDeleteLink = (linkToDelete: LinkItem) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      const originalLinks = [...prev.links];
+      const updatedLinks = prev.links.filter((l) => l.id !== linkToDelete.id);
+      const updatedData = { ...prev, links: updatedLinks };
+
+      try {
+        localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+      } catch (e) {
+        console.warn(e);
+      }
+
+      // 3.5초간 실행 취소(Undo) 토스트 제공
+      showToast(`'${linkToDelete.title}' 링크를 삭제했어요`, {
+        label: "실행 취소",
+        onClick: () => {
+          setData((curr) => {
+            if (!curr) return curr;
+            const restoredData = { ...curr, links: originalLinks };
+            try {
+              localStorage.setItem("mylink_data", JSON.stringify(restoredData));
+            } catch (e) {
+              console.warn(e);
+            }
+            return restoredData;
+          });
+          showToast(`'${linkToDelete.title}' 링크를 복원했어요`);
+        },
+      });
+
+      return updatedData;
+    });
   };
 
   // 데이터 로딩 (localStorage -> Mock Data fallback)
@@ -221,9 +296,20 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             <span>마이링크</span>
           </Link>
 
-          <span className="text-xs text-[#8b95a1] font-medium bg-white px-2.5 py-1 rounded-full border border-[#e5e8eb]">
-            윤다영의 링크
-          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsAddDialogOpen(true)}
+              className="gap-1 shadow-sm font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>링크 추가</span>
+            </Button>
+            <span className="text-xs text-[#8b95a1] font-medium bg-white px-2.5 py-1 rounded-full border border-[#e5e8eb] hidden sm:inline">
+              윤다영의 링크
+            </span>
+          </div>
         </div>
       </header>
 
@@ -289,21 +375,32 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
               총 <strong className="text-[#191f28] font-semibold">{filteredLinks.length}</strong>개의 링크가 있어요
             </span>
 
-            {/* 비활성 항목 포함 토글 */}
-            {inactiveCount > 0 && (
-              <Switch
-                checked={showInactive}
-                onCheckedChange={(nextState) => {
-                  setShowInactive(nextState);
-                  showToast(
-                    nextState
-                      ? "비활성화된 링크를 포함하여 표시해요"
-                      : "활성화된 링크만 표시해요"
-                  );
-                }}
-                label={`비활성 포함 (${inactiveCount})`}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {inactiveCount > 0 && (
+                <Switch
+                  checked={showInactive}
+                  onCheckedChange={(nextState) => {
+                    setShowInactive(nextState);
+                    showToast(
+                      nextState
+                        ? "비활성화된 링크를 포함하여 표시해요"
+                        : "활성화된 링크만 표시해요"
+                    );
+                  }}
+                  label={`비활성 포함 (${inactiveCount})`}
+                />
+              )}
+
+              <Button
+                variant="weak"
+                size="sm"
+                onClick={() => setIsAddDialogOpen(true)}
+                className="gap-1 text-[12px] h-7 px-2.5 font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>추가</span>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -319,6 +416,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                   link={link}
                   index={idx}
                   onOpenLink={handleLinkOpen}
+                  onDeleteLink={handleDeleteLink}
                 />
               ))}
             </Card>
@@ -332,19 +430,30 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                 검색된 링크가 없어요
               </p>
               <p className="text-sm text-[#6b7684] mb-4">
-                다른 검색어를 입력하거나 필터를 초기화해 보세요.
+                새로운 링크를 직접 등록하거나 검색어 및 필터를 초기화해 보세요.
               </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setSelectedCategory("all");
-                  setSearchQuery("");
-                  setShowInactive(true);
-                }}
-              >
-                필터 초기화하기
-              </Button>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsAddDialogOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>새 링크 추가하기</span>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCategory("all");
+                    setSearchQuery("");
+                    setShowInactive(true);
+                  }}
+                >
+                  필터 초기화하기
+                </Button>
+              </div>
             </Card>
           )}
         </section>
@@ -376,10 +485,18 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         </div>
       </div>
 
+      {/* 링크 추가 다이얼로그 (로컬 상태 폼) */}
+      <AddLinkDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onAddLink={handleAddLink}
+      />
+
       {/* TDS 스타일 토스트 알림 */}
       <Toast
         isVisible={isToastVisible}
         message={toastMessage}
+        action={toastAction}
         onClose={() => setIsToastVisible(false)}
       />
     </main>

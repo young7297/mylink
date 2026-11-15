@@ -21,6 +21,8 @@ import {
   ArrowUpRight,
   User,
   CheckCircle2,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 export function GitHubIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -221,4 +223,6 @@ export {
   ArrowUpRight,
   User,
   CheckCircle2,
+  Plus,
+  Trash2,
 };
