@@ -1,35 +1,31 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 const cardVariants = cva(
-  "text-[#21242e] transition-all relative font-sans",
+  "text-[#191f28] transition-all relative font-sans",
   {
     variants: {
       variant: {
-        // 기본 섀시 베벨 플레이트
-        default: "bg-[#7a8aba] bevel-plate",
-        // 45도 챔퍼드 코너 + 베벨 결합
-        chamfered: "bg-[#7a8aba] bevel-plate chamfered-box",
-        // 소프트 플레이트
-        soft: "bg-[#9fbee7] bevel-plate-light",
-        // 인셋 음각 플레이트 (리스트 슬롯 등)
-        inset: "bg-[#dedede] inset-plate-subtle",
-        // 깊은 음각 웰
-        "inset-deep": "bg-[#dedede] inset-plate",
-        // 카본 네이비 슬래브
-        carbon: "carbon-halftone border border-[#3d4f97] text-white",
-        // 페리윙클 패널
-        periwinkle: "bg-[#8ba1d4] bevel-plate",
-        // 순백색 플레이트
-        white: "bg-white bevel-plate",
+        // TDS 기본 화이트 카드 (둥근 모서리 + 1px 헤어라인)
+        default:
+          "bg-white rounded-3xl border border-[#e5e8eb] shadow-[0_2px_12px_rgba(25,31,40,0.03)]",
+        // TDS 그림자 없는 플랫 화이트 카드
+        flat: "bg-white rounded-3xl border border-[#e5e8eb]",
+        // TDS 부드러운 회색 카드
+        grey: "bg-[#f2f4f6] rounded-2xl",
+        // TDS 블루 약조 카드
+        blueWeak: "bg-[#e8f3ff] text-[#3182f6] rounded-2xl",
+        // 클릭 가능한 인터랙티브 카드
+        interactive:
+          "bg-white rounded-2xl border border-[#e5e8eb] hover:border-[#b0b8c1] active:bg-[#f9fafb] transition-colors cursor-pointer",
       },
     },
     defaultVariants: {
       variant: "default",
     },
   }
-)
+);
 
 export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -42,25 +38,20 @@ function Card({ className, variant, ...props }: CardProps) {
       className={cn(cardVariants({ variant, className }))}
       {...props}
     />
-  )
+  );
 }
 
 function CardHeader({
   className,
-  decorated = false,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { decorated?: boolean }) {
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       data-slot="card-header"
-      className={cn(
-        "flex flex-col gap-1 p-2 sm:p-2.5",
-        decorated && "border-b border-[#3d4f97]",
-        className
-      )}
+      className={cn("flex flex-col gap-1 p-4 sm:p-5 pb-2", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardTitle({
@@ -71,12 +62,12 @@ function CardTitle({
     <h3
       data-slot="card-title"
       className={cn(
-        "text-xs sm:text-[13px] font-extrabold text-[#21242e] leading-snug uppercase tracking-wide",
+        "text-lg sm:text-xl font-bold text-[#191f28] leading-snug tracking-tight",
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CardDescription({
@@ -86,10 +77,10 @@ function CardDescription({
   return (
     <p
       data-slot="card-description"
-      className={cn("text-[10px] sm:text-[11px] text-[#21242e]/75 leading-tight", className)}
+      className={cn("text-xs sm:text-sm text-[#6b7684] leading-relaxed", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardContent({
@@ -99,10 +90,10 @@ function CardContent({
   return (
     <div
       data-slot="card-content"
-      className={cn("p-2 sm:p-2.5 pt-0", className)}
+      className={cn("p-4 sm:p-5 pt-0", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardFooter({
@@ -113,12 +104,12 @@ function CardFooter({
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center justify-between p-2 sm:p-2.5 pt-0 text-[10px] font-mono",
+        "flex items-center justify-between p-4 sm:p-5 pt-0 text-xs text-[#8b95a1]",
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -129,4 +120,4 @@ export {
   CardContent,
   CardFooter,
   cardVariants,
-}
+};

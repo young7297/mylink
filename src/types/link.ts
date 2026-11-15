@@ -20,9 +20,9 @@ export interface UserProfile {
 }
 
 export interface ThemeConfig {
-  preset: "periwinkle-chrome" | "carbon-dark" | "gameboy-color" | "lavender-soft";
+  preset: "toss-light" | "periwinkle-chrome" | "carbon-dark" | "gameboy-color" | "lavender-soft" | string;
   bgColor: string;
-  bevelStyle: "sharp-chamfer" | "smooth-bevel" | "flat-plate";
+  bevelStyle: "none" | "sharp-chamfer" | "smooth-bevel" | "flat-plate" | string;
   accentColor: string;
 }
 

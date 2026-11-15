@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 interface TabsContextValue {
-  value: string
-  onValueChange: (value: string) => void
+  value: string;
+  onValueChange: (value: string) => void;
 }
 
-const TabsContext = React.createContext<TabsContextValue | null>(null)
+const TabsContext = React.createContext<TabsContextValue | null>(null);
 
 export interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  value: string
-  onValueChange: (value: string) => void
+  value: string;
+  onValueChange: (value: string) => void;
 }
 
 function Tabs({ value, onValueChange, className, children, ...props }: TabsProps) {
@@ -22,7 +22,7 @@ function Tabs({ value, onValueChange, className, children, ...props }: TabsProps
         {children}
       </div>
     </TabsContext.Provider>
-  )
+  );
 }
 
 function TabsList({
@@ -33,17 +33,17 @@ function TabsList({
     <div
       data-slot="tabs-list"
       className={cn(
-        "flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-thin select-none",
+        "flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none",
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
 export interface TabsTriggerProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  value: string
+  value: string;
 }
 
 function TabsTrigger({
@@ -52,12 +52,12 @@ function TabsTrigger({
   children,
   ...props
 }: TabsTriggerProps) {
-  const context = React.useContext(TabsContext)
+  const context = React.useContext(TabsContext);
   if (!context) {
-    throw new Error("TabsTrigger must be used within Tabs")
+    throw new Error("TabsTrigger must be used within Tabs");
   }
 
-  const isSelected = context.value === value
+  const isSelected = context.value === value;
 
   return (
     <button
@@ -67,44 +67,45 @@ function TabsTrigger({
       data-state={isSelected ? "active" : "inactive"}
       onClick={() => context.onValueChange(value)}
       className={cn(
-        "shrink-0 text-[10px] font-extrabold px-2.5 py-1 rounded-[1px] uppercase tracking-wider transition-all cursor-pointer font-sans",
+        // TDS Full Pill Chip (34px height)
+        "shrink-0 h-[34px] px-3.5 flex items-center justify-center rounded-full text-[13px] transition-all cursor-pointer font-sans whitespace-nowrap",
         isSelected
-          ? "bg-[#f68d1f] text-white bevel-button shadow"
-          : "bg-[#7a8aba] text-[#21242e] hover:bg-[#9fbee7] inset-plate-subtle",
+          ? "bg-[#191f28] text-white font-semibold shadow-sm"
+          : "bg-white text-[#4e5968] border border-[#e5e8eb] hover:bg-[#f2f4f6] font-medium",
         className
       )}
       {...props}
     >
       {children}
     </button>
-  )
+  );
 }
 
 export interface TabsContentProps
   extends React.HTMLAttributes<HTMLDivElement> {
-  value: string
+  value: string;
 }
 
 function TabsContent({ value, className, children, ...props }: TabsContentProps) {
-  const context = React.useContext(TabsContext)
+  const context = React.useContext(TabsContext);
   if (!context) {
-    throw new Error("TabsContent must be used within Tabs")
+    throw new Error("TabsContent must be used within Tabs");
   }
 
   if (context.value !== value) {
-    return null
+    return null;
   }
 
   return (
     <div
       role="tabpanel"
       data-state="active"
-      className={cn("w-full mt-2", className)}
+      className={cn("w-full mt-3", className)}
       {...props}
     >
       {children}
     </div>
-  )
+  );
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+export { Tabs, TabsList, TabsTrigger, TabsContent };

@@ -1,28 +1,24 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#7a8aba",
+  themeColor: "#f2f4f6",
 };
 
 export const metadata: Metadata = {
-  title: "Nintendo.com (Circa 2001) | 윤다영 (Dayoung Yoon) Web Console",
-  description: "Nintendo.com circa 2001 is the web rendered as console hardware — brushed-periwinkle metal plates, edge-lit highlights, carbon command layers, and tactile wayfinding.",
+  title: "마이링크 | 내 손안의 링크 허브",
+  description: "토스 디자인 시스템(TDS) 스타일로 정돈된 심플하고 직관적인 개인 링크 모음 서비스예요.",
   openGraph: {
-    title: "Nintendo.com (Circa 2001) | 윤다영 (Dayoung Yoon) Web Console",
-    description: "Brushed periwinkle metal plates, beveled chrome panels, and Y2K console hardware interface.",
+    title: "마이링크 | 내 손안의 링크 허브",
+    description: "토스 블루와 깔끔한 화이트 카드 인터페이스의 링크 허브예요.",
     type: "website",
     locale: "ko_KR",
   },
   icons: {
-    icon: "/mario-welcome.svg",
+    icon: "/favicon.ico",
   },
 };
 
@@ -32,8 +28,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={cn("h-full antialiased", "font-sans", geist.variable)} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <link
+          rel="stylesheet"
+          as="style"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-[#f2f4f6] text-[#191f28]">
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,49 +1,43 @@
-import * as React from "react"
-import Image, { ImageProps } from "next/image"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import Image, { ImageProps } from "next/image";
+import { cn } from "@/lib/utils";
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
-  shape?: "chamfered" | "square" | "circle"
-  size?: "sm" | "md" | "lg" | "xl"
-}
-
-const shapeStyles = {
-  chamfered: {
-    clipPath:
-      "polygon(6px 0%, calc(100% - 6px) 0%, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0% calc(100% - 6px), 0% 6px)",
-  },
-  square: {},
-  circle: {
-    borderRadius: "9999px",
-  },
+  shape?: "circle" | "rounded" | "squircle";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 const sizeClasses = {
-  sm: "w-8 h-8",
-  md: "w-12 h-12",
-  lg: "w-20 h-20 sm:w-24 sm:h-24",
-  xl: "w-28 h-28 sm:w-32 sm:h-32",
-}
+  sm: "w-9 h-9",
+  md: "w-11 h-11",
+  lg: "w-16 h-16 sm:w-20 sm:h-20",
+  xl: "w-24 h-24 sm:w-28 sm:h-28",
+};
+
+const shapeClasses = {
+  circle: "rounded-full",
+  rounded: "rounded-2xl",
+  squircle: "rounded-[22px]",
+};
 
 function Avatar({
   className,
-  shape = "chamfered",
+  shape = "circle",
   size = "lg",
-  style,
   ...props
 }: AvatarProps) {
   return (
     <div
       data-slot="avatar"
-      style={{ ...shapeStyles[shape], ...style }}
       className={cn(
-        "relative shrink-0 overflow-hidden bg-white border-2 border-[#3d4f97] p-1 shadow-inner",
+        "relative shrink-0 overflow-hidden bg-[#e8f3ff] border border-[#e5e8eb] shadow-sm select-none",
         sizeClasses[size],
+        shapeClasses[shape],
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
 function AvatarImage({
@@ -55,17 +49,17 @@ function AvatarImage({
   ...props
 }: ImageProps) {
   return (
-    <div className="w-full h-full relative bg-[#acace7]/20 flex items-center justify-center overflow-hidden">
+    <div className="w-full h-full relative flex items-center justify-center overflow-hidden">
       <Image
         src={src}
         alt={alt}
         width={width}
         height={height}
-        className={cn("w-full h-full object-contain select-none", className)}
+        className={cn("w-full h-full object-cover select-none", className)}
         {...props}
       />
     </div>
-  )
+  );
 }
 
 function AvatarFallback({
@@ -77,14 +71,14 @@ function AvatarFallback({
     <div
       data-slot="avatar-fallback"
       className={cn(
-        "flex h-full w-full items-center justify-center bg-[#8ba1d4] text-xs font-bold uppercase text-[#21242e]",
+        "flex h-full w-full items-center justify-center bg-[#e8f3ff] text-[#3182f6] text-sm font-bold",
         className
       )}
       {...props}
     >
       {children}
     </div>
-  )
+  );
 }
 
-export { Avatar, AvatarImage, AvatarFallback }
+export { Avatar, AvatarImage, AvatarFallback };

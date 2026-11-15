@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { LinkItem, MyLinkData } from "@/types/link";
 import {
   MOCK_MYLINK_DATA,
@@ -12,9 +11,9 @@ import {
 import ProfileHeader from "@/components/ProfileHeader";
 import LinkCard from "@/components/LinkCard";
 import Toast from "@/components/Toast";
-import { Search, X } from "@/components/icons";
+import { Search, X, Share2, Sparkles } from "@/components/icons";
 
-// shadcn/ui 기반 재사용 하드웨어 컴포넌트 Import
+// TDS 기반 UI 컴포넌트
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +78,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         } else if (targetSlug === "jisoo-design") {
           loadedData = MOCK_DESIGNER_DATA;
         } else {
-          // 일치하는 데이터 없음 -> 404 콘솔 오류
+          // 일치하는 데이터 없음 -> 404
           setIsNotFound(true);
           setIsLoading(false);
           return;
@@ -140,125 +139,133 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   }, [data]);
 
   const handleLinkOpen = (link: LinkItem) => {
-    showToast(`링크 열기: ${link.title}`);
+    showToast(`${link.title} 링크로 이동해요`);
     setTimeout(() => {
       window.open(link.url, "_blank", "noopener,noreferrer");
     }, 200);
   };
 
-  // 404 콘솔 오류 화면 (PRD 5.4 명세)
+  const handleShareBottomCTA = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : `https://young7297.github.io/mylink/${slug}`;
+    const name = data?.profile.name || "윤다영";
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${name} — 마이링크`,
+          text: `${name}님의 링크 모음이에요.`,
+          url,
+        });
+        showToast("페이지 링크를 공유했어요");
+      } catch {
+        // cancelled
+      }
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast("링크 주소를 클립보드에 복사했어요");
+    }
+  };
+
+  // 404 오류 화면 (토스 스타일)
   if (isNotFound) {
     return (
-      <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 font-sans select-none">
-        <Card variant="chamfered" className="w-full max-w-[540px] p-4 shadow-2xl text-[#21242e]">
-          
-          {/* 에러 헤더 바 */}
-          <div className="carbon-halftone p-2 flex items-center justify-between border-b border-[#3d4f97] text-white mb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#e60012] animate-ping" />
-              <span className="text-xs font-black tracking-wider text-[#e60012]">
-                카트리지 읽기 오류
-              </span>
-            </div>
-            <span className="font-mono text-[10px] text-[#ecab37]">
-              ERROR #404
-            </span>
+      <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-[#f2f4f6]">
+        <Card className="w-full max-w-[440px] p-8 text-center shadow-toss-2">
+          <div className="w-16 h-16 mx-auto mb-4 bg-[#feecee] text-[#f04452] rounded-full flex items-center justify-center text-2xl font-bold">
+            !
           </div>
+          <h2 className="text-xl font-bold text-[#191f28] mb-2">
+            요청하신 프로필을 찾을 수 없어요
+          </h2>
+          <p className="text-sm text-[#6b7684] mb-6 leading-relaxed">
+            <code className="text-[#3182f6] font-semibold bg-[#e8f3ff] px-1.5 py-0.5 rounded">/{slug}</code> 주소와 일치하는 프로필이 없어요.
+          </p>
 
-          {/* 에러 본체 웰 */}
-          <Card variant="inset-deep" className="p-4 text-center">
-            <div className="text-4xl mb-2">💾⚠️</div>
-            <h2 className="text-base font-extrabold text-[#21242e] mb-1">
-              슬롯 데이터를 찾을 수 없습니다
-            </h2>
-            <p className="text-xs text-[#21242e]/80 mb-3">
-              요청하신 슬러그 <code className="bg-black/10 px-1 py-0.5 rounded font-mono font-bold text-[#e60012]">/{slug}</code> 에 해당하는 프로필 카트리지가 장착되지 않았습니다.
-            </p>
-            <div className="dotted-divider my-3" />
-            <p className="text-[10px] text-[#60619c] font-mono mb-4">
-              지원되는 슬러그 목록: /dayoung, /jisoo-design, /links
-            </p>
-
-            <div className="flex items-center justify-center gap-2">
-              <Link href="/dayoung">
-                <Button variant="default" size="default">
-                  /dayoung 프로필 열기 ▶
-                </Button>
-              </Link>
-              <Link href="/">
-                <Button variant="secondary" size="default">
-                  인트로 화면으로 이동
-                </Button>
-              </Link>
-            </div>
-          </Card>
-
+          <div className="flex flex-col gap-2">
+            <Link href="/dayoung" className="w-full">
+              <Button variant="primary" size="lg" className="w-full">
+                윤다영 프로필 보러가기
+              </Button>
+            </Link>
+            <Link href="/" className="w-full">
+              <Button variant="secondary" size="lg" className="w-full">
+                홈으로 이동
+              </Button>
+            </Link>
+          </div>
         </Card>
       </main>
     );
   }
 
-  // 로딩 화면
+  // 로딩 화면 (토스 3-dot 느낌)
   if (isLoading || !data) {
     return (
-      <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 font-sans select-none">
-        <Card variant="default" className="p-4 flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full bg-[#f68d1f] animate-spin border-2 border-white border-t-transparent" />
-          <span className="text-xs font-bold text-white uppercase tracking-wider">
-            프로필 및 링크 데이터 로딩 중...
-          </span>
-        </Card>
+      <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-[#f2f4f6]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-3 h-3 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-3 h-3 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+          <p className="text-sm font-medium text-[#6b7684]">
+            잠시만 기다려 주세요...
+          </p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen w-full flex flex-col items-center justify-start py-4 px-2 sm:px-4 font-sans select-none">
+    <main className="min-h-screen w-full flex flex-col items-center justify-start pb-28 bg-[#f2f4f6] font-sans">
       
       {/* ========================================================= */}
-      {/* 1. 상단 미니 퀵 네비게이션                                */}
+      {/* 1. 상단 내비게이션 바 (TopAppBar: 56px)                   */}
       {/* ========================================================= */}
-      <header className="w-full max-w-[680px] flex items-center justify-between gap-2 mb-2 px-1">
-        <Link href="/">
-          <Button variant="secondary" size="xs" className="gap-1.5">
-            <span>◀</span>
-            <span>메인 콘솔</span>
-          </Button>
-        </Link>
+      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70">
+        <div className="max-w-[520px] mx-auto h-14 px-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-1.5 text-[#191f28] font-bold text-lg hover:text-[#3182f6] transition-colors">
+            <span className="w-6 h-6 rounded-lg bg-[#3182f6] text-white flex items-center justify-center text-xs font-black">
+              M
+            </span>
+            <span>마이링크</span>
+          </Link>
 
-        {/* 페르소나 전환 바로가기 칩 (테스트 및 둘러보기 편의) */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-bold text-white/80 uppercase hidden sm:inline mr-1">
-            프로필 선택:
-          </span>
-          <Link href="/dayoung">
-            <Button
-              variant={data.slug === "dayoung" ? "default" : "secondary"}
-              size="xs"
-            >
-              다영 (개발자)
-            </Button>
-          </Link>
-          <Link href="/jisoo-design">
-            <Button
-              variant={data.slug === "jisoo-design" ? "amber" : "secondary"}
-              size="xs"
-            >
-              지수 (디자이너)
-            </Button>
-          </Link>
+          {/* 프로필 전환 바로가기 칩 */}
+          <div className="flex items-center gap-1 bg-white p-1 rounded-full border border-[#e5e8eb] shadow-sm">
+            <Link href="/dayoung">
+              <button
+                type="button"
+                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
+                  data.slug === "dayoung"
+                    ? "bg-[#3182f6] text-white font-semibold"
+                    : "text-[#6b7684] hover:text-[#191f28]"
+                }`}
+              >
+                다영
+              </button>
+            </Link>
+            <Link href="/jisoo-design">
+              <button
+                type="button"
+                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
+                  data.slug === "jisoo-design"
+                    ? "bg-[#3182f6] text-white font-semibold"
+                    : "text-[#6b7684] hover:text-[#191f28]"
+                }`}
+              >
+                지수
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* ========================================================= */}
-      {/* 2. 메인 하드웨어 콘솔 섀시: shadcn/ui Card (chamfered)    */}
+      {/* 2. 메인 콘텐츠 컨테이너 (모바일 셸 레이아웃)             */}
       {/* ========================================================= */}
-      <Card
-        variant="chamfered"
-        className="w-full max-w-[680px] shadow-2xl relative p-3 sm:p-4"
-      >
+      <div className="w-full max-w-[520px] px-4 pt-4 flex flex-col">
         
-        {/* 프로필 헤더 컴포넌트 */}
+        {/* 프로필 헤더 */}
         <ProfileHeader
           profile={data.profile}
           socials={data.socials}
@@ -267,59 +274,35 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         />
 
         {/* ======================================================= */}
-        {/* 3. 하드웨어 컨트롤 덱: shadcn/ui Card (periwinkle)       */}
+        {/* 3. 검색 및 필터 컨트롤 바                              */}
         {/* ======================================================= */}
-        <Card variant="periwinkle" className="w-full p-2.5 mb-3">
+        <section aria-label="링크 검색 및 필터" className="w-full mb-3 space-y-3">
           
-          {/* 상단: 검색 인셋 웰 + 락커 토글 */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-2">
-            
-            {/* 검색 인풋 필드: shadcn/ui Input 적용 */}
-            <div className="flex-1 relative flex items-center">
-              <span className="absolute left-2.5 text-[#3d4f97] pointer-events-none z-10">
-                <Search className="w-3.5 h-3.5" />
-              </span>
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="링크 제목, 설명, 주소 검색..."
-                className="pl-8 pr-7"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 text-gray-500 hover:text-black cursor-pointer z-10"
-                  title="검색어 지우기"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* 비활성 항목 보기 토글: shadcn/ui Switch 락커 스위치 적용 */}
-            {inactiveCount > 0 && (
-              <div className="flex items-center gap-2 bg-[#21242e] text-white px-2.5 py-1 bevel-button rounded-[2px] justify-between">
-                <Switch
-                  checked={showInactive}
-                  onCheckedChange={(nextState) => {
-                    setShowInactive(nextState);
-                    showToast(
-                      nextState
-                        ? "비활성화된 링크를 포함하여 전체를 표시합니다."
-                        : "활성화된 링크만 표시합니다."
-                    );
-                  }}
-                  label={`비활성 포함 (${inactiveCount})`}
-                  className="text-white"
-                />
-              </div>
+          {/* 검색창 (TDS 48px Input) */}
+          <div className="relative w-full flex items-center">
+            <span className="absolute left-4 text-[#8b95a1] pointer-events-none z-10">
+              <Search className="w-4 h-4" />
+            </span>
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="원하는 링크를 검색해 보세요"
+              className="pl-11 pr-10"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 text-[#8b95a1] hover:text-[#191f28] cursor-pointer p-1"
+                title="검색어 지우기"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
-
           </div>
 
-          {/* 하단: 카테고리 셀렉터 스위치 바: shadcn/ui Tabs 적용 */}
+          {/* 카테고리 칩 목록 (34px Full Pill) */}
           <Tabs
             value={selectedCategory}
             onValueChange={(val) => setSelectedCategory(val)}
@@ -333,115 +316,100 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             </TabsList>
           </Tabs>
 
-          {/* 상태 서머리 라인 */}
-          <div className="flex items-center justify-between text-[9px] font-mono font-bold text-[#21242e]/80 mt-2 pt-1 border-t border-[#3d4f97]/30">
-            <span className="flex items-center gap-1.5">
-              <span>상태:</span>
-              <Badge variant="platinum" size="xs">
-                {filteredLinks.length}개 표시 중
-              </Badge>
+          {/* 상태 및 필터 서머리 라인 */}
+          <div className="flex items-center justify-between px-1 text-xs text-[#6b7684]">
+            <span className="tabular-num">
+              총 <strong className="text-[#191f28] font-semibold">{filteredLinks.length}</strong>개의 링크가 있어요
             </span>
-            <span className="flex items-center gap-1">
-              <span>활성:</span>
-              <Badge variant="signal" size="xs">
-                {activeCount}
-              </Badge>
-              <span>/</span>
-              <Badge variant="carbon" size="xs">
-                전체 {data.links?.length || 0}개
-              </Badge>
-            </span>
-          </div>
 
-        </Card>
-
-        {/* ======================================================= */}
-        {/* 4. 링크 카트리지 목록                                  */}
-        {/* ======================================================= */}
-        <section aria-label="링크 목록" className="w-full flex flex-col gap-2">
-          {filteredLinks.length > 0 ? (
-            filteredLinks.map((link, idx) => (
-              <LinkCard
-                key={link.id}
-                link={link}
-                index={idx}
-                onOpenLink={handleLinkOpen}
+            {/* 비활성 항목 포함 토글 */}
+            {inactiveCount > 0 && (
+              <Switch
+                checked={showInactive}
+                onCheckedChange={(nextState) => {
+                  setShowInactive(nextState);
+                  showToast(
+                    nextState
+                      ? "비활성화된 링크를 포함하여 표시해요"
+                      : "활성화된 링크만 표시해요"
+                  );
+                }}
+                label={`비활성 포함 (${inactiveCount})`}
               />
-            ))
+            )}
+          </div>
+        </section>
+
+        {/* ======================================================= */}
+        {/* 4. 링크 리스트 카드 (토스 목록 뷰)                      */}
+        {/* ======================================================= */}
+        <section aria-label="링크 목록" className="w-full">
+          {filteredLinks.length > 0 ? (
+            <Card className="p-1 sm:p-2 divide-y divide-[#e5e8eb]/70 shadow-toss-1 overflow-hidden">
+              {filteredLinks.map((link, idx) => (
+                <LinkCard
+                  key={link.id}
+                  link={link}
+                  index={idx}
+                  onOpenLink={handleLinkOpen}
+                />
+              ))}
+            </Card>
           ) : (
-            /* 빈 결과 하드웨어 인디케이터 */
-            <Card variant="inset-deep" className="w-full p-6 text-center my-2">
-              <div className="text-3xl mb-1">🔍</div>
-              <p className="text-xs font-extrabold text-[#21242e] uppercase mb-1">
-                검색된 링크가 없습니다
+            /* 빈 결과 화면 */
+            <Card className="w-full p-8 text-center my-2 shadow-toss-1">
+              <div className="w-12 h-12 mx-auto mb-3 bg-[#f2f4f6] text-[#8b95a1] rounded-full flex items-center justify-center text-xl">
+                🔍
+              </div>
+              <p className="text-base font-bold text-[#191f28] mb-1">
+                검색된 링크가 없어요
               </p>
-              <p className="text-[10px] text-[#60619c]">
-                현재 선택된 카테고리나 검색어와 일치하는 링크가 없습니다.
+              <p className="text-sm text-[#6b7684] mb-4">
+                다른 검색어를 입력하거나 필터를 초기화해 보세요.
               </p>
               <Button
-                variant="default"
-                size="xs"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setSelectedCategory("all");
                   setSearchQuery("");
                   setShowInactive(true);
                 }}
-                className="mt-3"
               >
-                필터 초기화
+                필터 초기화하기
               </Button>
             </Card>
           )}
         </section>
 
-        {/* ======================================================= */}
-        {/* 5. 푸터: 닌텐도 2001 하드웨어 감성 카본 슬래브          */}
-        {/* ======================================================= */}
-        <footer className="carbon-halftone border border-[#3d4f97] p-3 text-white flex flex-col sm:flex-row items-center justify-between gap-3 select-none mt-4 rounded-[2px]">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/esrb-badge.svg"
-              alt="ESRB 인증"
-              width={100}
-              height={30}
-              className="h-6 w-auto"
-            />
-            <div className="text-left font-mono text-[9px] text-[#9fbee7]">
-              <div>모델 번호: AGB-001</div>
-              <div className="text-[#ecab37]">2001 콘솔 에디션</div>
-            </div>
-          </div>
-
-          <div className="text-center sm:text-right micro-label text-[#9fbee7] space-y-0.5">
-            <p>
-              © 2001–2026 마이링크 프로젝트 · {data.profile.name}
-            </p>
-            <div className="flex items-center justify-center sm:justify-end gap-2 text-[9px] text-[#ecab37] font-bold">
-              <Link href="/" className="hover:underline">
-                홈으로
-              </Link>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={() => showToast("시스템 하드웨어: 정상 작동 중")}
-                className="hover:underline cursor-pointer"
-              >
-                시스템 진단
-              </button>
-              <span>•</span>
-              <a
-                href={data.socials?.email ? `mailto:${data.socials.email}` : "mailto:ydo9902@gmail.com"}
-                className="hover:underline"
-              >
-                문의하기
-              </a>
-            </div>
-          </div>
+        {/* 푸터 안내 */}
+        <footer className="mt-8 text-center text-xs text-[#8b95a1] space-y-1">
+          <p>© 2026 마이링크 · {data.profile.name}</p>
+          <p className="text-[11px] text-[#b0b8c1]">
+            토스 디자인 시스템(TDS) 가이드라인을 준수하여 제작되었어요
+          </p>
         </footer>
 
-      </Card>
+      </div>
 
-      {/* Retro Console Toast */}
+      {/* ========================================================= */}
+      {/* 5. 하단 고정 CTA (TDS BottomCTA: 56px + 보호 그라디언트)   */}
+      {/* ========================================================= */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+        <div className="w-full max-w-[520px] mx-auto px-4 pb-5 pt-6 bottom-cta-protection pointer-events-auto">
+          <Button
+            variant="primary"
+            size="pill"
+            onClick={handleShareBottomCTA}
+            className="w-full shadow-toss-2"
+          >
+            <Share2 className="w-5 h-5" />
+            <span>이 프로필 공유하기</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* TDS 스타일 토스트 알림 */}
       <Toast
         isVisible={isToastVisible}
         message={toastMessage}

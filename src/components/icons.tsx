@@ -17,6 +17,10 @@ import {
   FolderGit2,
   Terminal,
   Sparkles,
+  ChevronRight,
+  ArrowUpRight,
+  User,
+  CheckCircle2,
 } from "lucide-react";
 
 export function GitHubIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -110,7 +114,7 @@ export function VelogIcon({ className = "w-4 h-4" }: { className?: string }) {
 /**
  * 아이콘 이름 문자열에 따라 알맞은 아이콘 컴포넌트를 반환하는 헬퍼
  */
-export function getLinkIcon(iconName?: string, className = "w-4 h-4") {
+export function getLinkIcon(iconName?: string, className = "w-5 h-5") {
   const normalized = (iconName || "").toLowerCase().trim();
 
   switch (normalized) {
@@ -143,52 +147,54 @@ export function getLinkIcon(iconName?: string, className = "w-4 h-4") {
     case "codes":
     case "code":
       return <FolderGit2 className={className} />;
+    case "globe":
+      return <Globe className={className} />;
     default:
       return <LinkIconLucide className={className} />;
   }
 }
 
 /**
- * 카테고리별 하드웨어 테마 컬러 및 뱃지 스타일 헬퍼
+ * 토스 디자인 시스템(TDS) 스타일 카테고리 뱃지 헬퍼
  */
 export function getCategoryBadgeStyle(category?: string) {
   const norm = (category || "").toLowerCase();
   switch (norm) {
     case "codes":
       return {
-        bg: "bg-[#21242e] text-[#ecab37] border border-[#ecab37]/40",
-        label: "코드 저장소",
-        accent: "#ecab37",
+        bg: "bg-[#E6F9F0] text-[#00A854]",
+        label: "저장소",
+        accent: "#00A854",
       };
     case "projects":
       return {
-        bg: "bg-[#f68d1f] text-white border border-white/40",
+        bg: "bg-[#E8F3FF] text-[#3182F6]",
         label: "프로젝트",
-        accent: "#f68d1f",
+        accent: "#3182F6",
       };
     case "skills":
       return {
-        bg: "bg-[#3d4f97] text-white border border-[#b8c7ee]/50",
-        label: "기술 스택",
-        accent: "#3d4f97",
+        bg: "bg-[#FFF4E5] text-[#D9730D]",
+        label: "기술스택",
+        accent: "#D9730D",
       };
     case "social":
       return {
-        bg: "bg-[#8ba1d4] text-[#21242e] border border-[#3d4f97]",
-        label: "소셜 링크",
-        accent: "#8ba1d4",
+        bg: "bg-[#F2F4F6] text-[#4E5968]",
+        label: "소셜",
+        accent: "#6B7684",
       };
     case "contact":
       return {
-        bg: "bg-[#206479] text-white border border-[#9fbee7]/40",
-        label: "문의처",
-        accent: "#206479",
+        bg: "bg-[#F4EBFB] text-[#8E44AD]",
+        label: "연락처",
+        accent: "#8E44AD",
       };
     default:
       return {
-        bg: "bg-[#dedede] text-[#21242e] border border-[#3d4f97]",
+        bg: "bg-[#F2F4F6] text-[#6B7684]",
         label: category || "링크",
-        accent: "#7a8aba",
+        accent: "#8B95A1",
       };
   }
 }
@@ -211,4 +217,8 @@ export {
   FolderGit2,
   Terminal,
   Sparkles,
+  ChevronRight,
+  ArrowUpRight,
+  User,
+  CheckCircle2,
 };

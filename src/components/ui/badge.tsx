@@ -1,42 +1,32 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center font-extrabold uppercase tracking-wider select-none font-sans transition-colors",
+  "inline-flex items-center justify-center font-medium select-none font-sans transition-colors rounded-[6px]",
   {
     variants: {
       variant: {
-        // PRD 4.4 Amber Silkscreen
-        default:
-          "bg-[#ecab37] text-[#21242e] border border-black/20",
-        // Signal Action
-        signal:
-          "bg-[#f68d1f] text-white border border-white/30",
-        // Carbon Navy
-        carbon:
-          "bg-[#21242e] text-[#ecab37] border border-[#ecab37]/40",
-        // Indigo Chrome
-        indigo:
-          "bg-[#3d4f97] text-white border border-[#b8c7ee]/40",
-        // Periwinkle
-        periwinkle:
-          "bg-[#8ba1d4] text-[#21242e] border border-[#3d4f97]",
-        // Platinum Inset
-        platinum:
-          "bg-[#dedede] text-[#21242e] border border-[#3d4f97]/40",
-        // Destructive / Hot
-        destructive:
-          "bg-[#e60012] text-white border border-white/20",
-        // Outline
-        outline:
-          "border border-[#3d4f97] text-[#3d4f97] bg-white/40",
+        // TDS Blue Weak (기본)
+        default: "bg-[#e8f3ff] text-[#3182f6]",
+        // TDS Grey Weak (중립 태그)
+        grey: "bg-[#f2f4f6] text-[#4e5968]",
+        // TDS Green (성공, 활성)
+        green: "bg-[#e6f9f0] text-[#00a854]",
+        // TDS Red (주의, 비활성)
+        red: "bg-[#feecee] text-[#f04452]",
+        // TDS Yellow/Orange (알림, 중요)
+        yellow: "bg-[#fff4e5] text-[#d9730d]",
+        // TDS Dark (강한 강조)
+        dark: "bg-[#191f28] text-white",
+        // TDS Outline
+        outline: "border border-[#e5e8eb] text-[#6b7684] bg-white",
       },
       size: {
-        default: "text-[9px] px-1.5 py-0.2 rounded-[1px]",
-        xs: "text-[8px] px-1 py-0.2 rounded-[1px]",
-        sm: "text-[9px] px-1.5 py-0.5 rounded-[2px]",
-        md: "text-[10px] px-2 py-0.5 rounded-[2px]",
+        default: "text-[12px] px-2 py-0.5 min-h-[22px]",
+        xs: "text-[11px] px-1.5 py-0.2 min-h-[20px]",
+        sm: "text-[12px] px-2 py-0.5 min-h-[22px]",
+        md: "text-[13px] px-2.5 py-1 min-h-[26px]",
       },
     },
     defaultVariants: {
@@ -44,7 +34,7 @@ const badgeVariants = cva(
       size: "default",
     },
   }
-)
+);
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -57,7 +47,7 @@ function Badge({ className, variant, size, ...props }: BadgeProps) {
       className={cn(badgeVariants({ variant, size }), className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };
