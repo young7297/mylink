@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -38,6 +39,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#f2f4f6] text-[#191f28]">
+        <FirebaseAnalytics />
         {children}
       </body>
     </html>

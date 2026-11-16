@@ -12,6 +12,11 @@ import LinkCard from "@/components/LinkCard";
 import AddLinkDialog from "@/components/AddLinkDialog";
 import Toast from "@/components/Toast";
 import { Search, X, Share2, Plus } from "@/components/icons";
+import {
+  addLinkToFirestore,
+  deleteLinkFromFirestore,
+  subscribeLinksFromFirestore,
+} from "@/lib/linkService";
 
 // TDS 기반 UI 컴포넌트
 import { Card } from "@/components/ui/card";
@@ -56,35 +61,40 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   // 링크 추가 다이얼로그 상태
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
 
-  // 로컬 상태 링크 추가 핸들러
-  const handleAddLink = (
+  // Firestore 연동 링크 추가 핸들러 (경로: users/anonymous/links)
+  const handleAddLink = async (
     newLinkData: Omit<LinkItem, "id" | "order" | "createdAt">
   ) => {
-    const newLink: LinkItem = {
-      ...newLinkData,
-      id: `link-${Date.now()}`,
-      order: 0,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const currentOrder = data?.links?.length || 0;
+      // Firestore users/anonymous/links 컬렉션에 추가
+      const savedLink = await addLinkToFirestore(newLinkData, currentOrder);
 
-    setData((prev) => {
-      if (!prev) return prev;
-      const updatedLinks = [newLink, ...(prev.links || [])];
-      const updatedData: MyLinkData = { ...prev, links: updatedLinks };
+      setData((prev) => {
+        if (!prev) return prev;
+        // Firestore snapshot에 의해 이미 반영되었을 수 있으므로 중복 방지
+        const filtered = (prev.links || []).filter((l) => l.id !== savedLink.id);
+        const updatedLinks = [savedLink, ...filtered];
+        const updatedData: MyLinkData = { ...prev, links: updatedLinks };
 
-      try {
-        localStorage.setItem("mylink_data", JSON.stringify(updatedData));
-      } catch (e) {
-        console.warn("localStorage save error:", e);
-      }
+        try {
+          localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
 
-      return updatedData;
-    });
+        return updatedData;
+      });
 
-    showToast(`'${newLink.title}' 링크가 성공적으로 추가되었어요!`);
+      showToast(`'${savedLink.title}' 링크가 Firestore에 안전하게 저장되었어요!`);
+    } catch (error: any) {
+      console.error("Firestore 저장 실패:", error);
+      showToast("Firestore 저장 실패: " + (error?.message || "다시 시도해 주세요"));
+      throw error;
+    }
   };
 
-  // 링크 삭제 핸들러 (로컬 상태 + PRD 시나리오 E: 실행 취소 Undo 지원)
+  // 링크 삭제 핸들러 (로컬 상태 + Firestore 삭제 + PRD 시나리오 E: 실행 취소 Undo 지원)
   const handleDeleteLink = (linkToDelete: LinkItem) => {
     setData((prev) => {
       if (!prev) return prev;
@@ -98,10 +108,15 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         console.warn(e);
       }
 
+      // Firestore에서 삭제 시도 (users/anonymous/links)
+      deleteLinkFromFirestore(linkToDelete.id).catch((e) => {
+        console.warn("Firestore 삭제 스킵 또는 에러:", e);
+      });
+
       // 3.5초간 실행 취소(Undo) 토스트 제공
       showToast(`'${linkToDelete.title}' 링크를 삭제했어요`, {
         label: "실행 취소",
-        onClick: () => {
+        onClick: async () => {
           setData((curr) => {
             if (!curr) return curr;
             const restoredData = { ...curr, links: originalLinks };
@@ -112,6 +127,20 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             }
             return restoredData;
           });
+
+          // Firestore에 다시 추가 복원
+          try {
+            await addLinkToFirestore({
+              title: linkToDelete.title,
+              url: linkToDelete.url,
+              description: linkToDelete.description,
+              category: linkToDelete.category,
+              icon: linkToDelete.icon,
+              active: linkToDelete.active,
+            });
+          } catch (e) {
+            console.warn("Firestore 복원 실패:", e);
+          }
           showToast(`'${linkToDelete.title}' 링크를 복원했어요`);
         },
       });
@@ -119,6 +148,32 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       return updatedData;
     });
   };
+
+  // Firestore 실시간 구독 (users/anonymous/links)
+  useEffect(() => {
+    const unsubscribe = subscribeLinksFromFirestore(
+      (firestoreLinks) => {
+        if (!firestoreLinks || firestoreLinks.length === 0) return;
+
+        setData((prev) => {
+          if (!prev) return prev;
+          const firestoreIds = new Set(firestoreLinks.map((l) => l.id));
+          const baseLinks = prev.links ? prev.links : MOCK_MYLINK_DATA.links;
+          const nonDuplicateBase = baseLinks.filter((l) => !firestoreIds.has(l.id));
+          const combined = [...firestoreLinks, ...nonDuplicateBase];
+
+          return { ...prev, links: combined };
+        });
+      },
+      (err) => {
+        console.warn("Firestore subscription error:", err);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // 데이터 로딩 (localStorage -> Mock Data fallback)
   useEffect(() => {
@@ -485,7 +540,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         </div>
       </div>
 
-      {/* 링크 추가 다이얼로그 (로컬 상태 폼) */}
+      {/* 링크 추가 다이얼로그 (Firestore users/anonymous/links 연동) */}
       <AddLinkDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}

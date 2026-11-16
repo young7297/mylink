@@ -50,7 +50,7 @@ export const CATEGORY_SELECT_OPTIONS = [
 export interface AddLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddLink: (link: Omit<LinkItem, "id" | "order" | "createdAt">) => void;
+  onAddLink: (link: Omit<LinkItem, "id" | "order" | "createdAt">) => Promise<void> | void;
   existingLinks?: LinkItem[];
 }
 
@@ -98,6 +98,10 @@ export default function AddLinkDialog({
     description?: boolean;
   }>({});
 
+  // Firestore 비동기 저장 중 및 에러 상태
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   // 수동 선택 여부 (URL 자동 감지가 덮어쓰지 않도록 추적)
   const [isManualIcon, setIsManualIcon] = useState(false);
   const [isManualCategory, setIsManualCategory] = useState(false);
@@ -119,6 +123,8 @@ export default function AddLinkDialog({
       setTouched({});
       setIsManualIcon(false);
       setIsManualCategory(false);
+      setIsSubmitting(false);
+      setSubmitError(null);
     }
   }, [open]);
 
@@ -301,8 +307,9 @@ export default function AddLinkDialog({
   };
 
   // 폼 제출 핸들러
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     // 모든 필드를 touched 처리
     setTouched({ title: true, url: true, description: true });
@@ -331,16 +338,26 @@ export default function AddLinkDialog({
       return;
     }
 
-    onAddLink({
-      title: title.trim(),
-      url: formattedUrl,
-      description: description.trim() || undefined,
-      category,
-      icon,
-      active,
-    });
+    try {
+      setIsSubmitting(true);
+      await onAddLink({
+        title: title.trim(),
+        url: formattedUrl,
+        description: description.trim() || undefined,
+        category,
+        icon,
+        active,
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("Link add error:", err);
+      setSubmitError(
+        err?.message || "링크를 저장하는 중 오류가 발생했습니다. 다시 시도해 주세요."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 실시간 미리보기용 호스트 주소 가공
@@ -655,17 +672,40 @@ export default function AddLinkDialog({
             </div>
           </div>
 
+          {/* 에러 메시지 안내 */}
+          {submitError && (
+            <div className="p-3 bg-[#feecee] text-[#f04452] text-xs rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
               variant="secondary"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
             >
               취소
             </Button>
-            <Button type="submit" variant="primary" className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              <span>추가하기</span>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+              className="gap-1.5 min-w-[90px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>저장 중...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  <span>추가하기</span>
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>
