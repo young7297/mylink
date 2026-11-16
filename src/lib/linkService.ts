@@ -5,6 +5,7 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
+  updateDoc,
   query,
   orderBy,
   QuerySnapshot,
@@ -35,6 +36,15 @@ function mapDocToLinkItem(docSnap: any): LinkItem {
     createdAtStr = new Date(data.createdAt.seconds * 1000).toISOString();
   }
 
+  let updatedAtStr: string | undefined = undefined;
+  if (typeof data.updatedAt === "string") {
+    updatedAtStr = data.updatedAt;
+  } else if (data.updatedAt?.toDate && typeof data.updatedAt.toDate === "function") {
+    updatedAtStr = data.updatedAt.toDate().toISOString();
+  } else if (data.updatedAt?.seconds) {
+    updatedAtStr = new Date(data.updatedAt.seconds * 1000).toISOString();
+  }
+
   return {
     id: docSnap.id,
     title: data.title || "",
@@ -45,6 +55,7 @@ function mapDocToLinkItem(docSnap: any): LinkItem {
     active: data.active !== false,
     order: typeof data.order === "number" ? data.order : 0,
     createdAt: createdAtStr,
+    updatedAt: updatedAtStr,
   };
 }
 
@@ -57,6 +68,7 @@ export async function addLinkToFirestore(
 ): Promise<LinkItem> {
   const colRef = getLinksCollectionRef();
   const createdAt = new Date().toISOString();
+  const updatedAt = (linkData as any).updatedAt || createdAt;
 
   // undefined 필드는 Firestore 저장 시 에러를 유발하므로 정제
   const payload: Record<string, any> = {
@@ -67,6 +79,7 @@ export async function addLinkToFirestore(
     active: linkData.active !== false,
     order,
     createdAt,
+    updatedAt,
   };
 
   if (linkData.description && linkData.description.trim()) {
@@ -85,6 +98,7 @@ export async function addLinkToFirestore(
     active: payload.active,
     order: payload.order,
     createdAt: payload.createdAt,
+    updatedAt: payload.updatedAt,
   };
 }
 
@@ -129,6 +143,37 @@ export async function deleteLinkFromFirestore(id: string): Promise<void> {
     await deleteDoc(docRef);
   } catch (error) {
     console.warn(`Failed to delete link (${id}) from Firestore:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Firestore users/anonymous/links 컬렉션에서 특정 링크 수정
+ */
+export async function updateLinkInFirestore(
+  id: string,
+  linkData: Partial<Omit<LinkItem, "id">>
+): Promise<void> {
+  try {
+    const docRef = doc(db, "users", "anonymous", "links", id);
+    const payload: Record<string, any> = {};
+
+    if (linkData.title !== undefined) payload.title = linkData.title.trim();
+    if (linkData.url !== undefined) payload.url = linkData.url.trim();
+    if (linkData.description !== undefined) {
+      payload.description = linkData.description.trim() || "";
+    }
+    if (linkData.category !== undefined) payload.category = linkData.category;
+    if (linkData.icon !== undefined) payload.icon = linkData.icon;
+    if (linkData.active !== undefined) payload.active = linkData.active;
+    if (linkData.order !== undefined) payload.order = linkData.order;
+
+    // 수정 시각(updatedAt) 자동 기록
+    payload.updatedAt = linkData.updatedAt || new Date().toISOString();
+
+    await updateDoc(docRef, payload);
+  } catch (error) {
+    console.warn(`Failed to update link (${id}) in Firestore:`, error);
     throw error;
   }
 }

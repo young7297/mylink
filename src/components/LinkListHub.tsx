@@ -10,11 +10,13 @@ import {
 import ProfileHeader from "@/components/ProfileHeader";
 import LinkCard from "@/components/LinkCard";
 import AddLinkDialog from "@/components/AddLinkDialog";
+import DeleteLinkDialog from "@/components/DeleteLinkDialog";
 import Toast from "@/components/Toast";
 import { Search, X, Share2, Plus, RotateCcw, Loader2 } from "@/components/icons";
 import {
   addLinkToFirestore,
   deleteLinkFromFirestore,
+  updateLinkInFirestore,
   getLinksFromFirestore,
   seedSampleLinksToFirestore,
 } from "@/lib/linkService";
@@ -61,6 +63,9 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
   // 링크 추가 다이얼로그 상태
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+  // 링크 삭제 확인 모달 상태
+  const [deleteModalLink, setDeleteModalLink] = useState<LinkItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   // 샘플 데이터 시딩 로딩 상태
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
 
@@ -142,73 +147,90 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 링크 삭제 핸들러 (로컬 상태 + Firestore 삭제 + PRD 시나리오 E: 실행 취소 Undo 지원)
-  const handleDeleteLink = (linkToDelete: LinkItem) => {
-    setIsUpdating(true);
-    setUpdateMessage("링크를 삭제하고 있어요...");
+  // 링크 삭제 확인 모달 열기 요청 핸들러
+  const handleRequestDelete = (link: LinkItem) => {
+    setDeleteModalLink(link);
+    setIsDeleteDialogOpen(true);
+  };
 
-    setData((prev) => {
-      if (!prev) return prev;
-      const originalLinks = [...prev.links];
-      const updatedLinks = prev.links.filter((l) => l.id !== linkToDelete.id);
-      const updatedData = { ...prev, links: updatedLinks };
+  // 삭제 확인 모달에서 [삭제하기] 클릭 시 실행 (Firestore 연동)
+  const handleConfirmDelete = async (linkToDelete: LinkItem) => {
+    try {
+      setIsUpdating(true);
+      setUpdateMessage("Firestore에서 링크를 삭제하고 있어요...");
 
-      try {
-        localStorage.setItem("mylink_data", JSON.stringify(updatedData));
-      } catch (e) {
-        console.warn(e);
-      }
+      // 1. Firestore users/anonymous/links 경로에서 문서 삭제
+      await deleteLinkFromFirestore(linkToDelete.id);
 
-      // Firestore에서 삭제 시도 (users/anonymous/links)
-      deleteLinkFromFirestore(linkToDelete.id)
-        .catch((e) => {
-          console.warn("Firestore 삭제 스킵 또는 에러:", e);
-        })
-        .finally(() => {
-          setIsUpdating(false);
-          setUpdateMessage("");
-        });
+      // 2. 화면 목록 즉시 갱신
+      setData((prev) => {
+        if (!prev) return prev;
+        const updatedLinks = prev.links.filter((l) => l.id !== linkToDelete.id);
+        const updatedData = { ...prev, links: updatedLinks };
 
-      // 3.5초간 실행 취소(Undo) 토스트 제공
-      showToast(`'${linkToDelete.title}' 링크를 삭제했어요`, {
-        label: "실행 취소",
-        onClick: async () => {
-          try {
-            setIsUpdating(true);
-            setUpdateMessage("링크를 복원하고 있어요...");
-
-            const restored = await addLinkToFirestore({
-              title: linkToDelete.title,
-              url: linkToDelete.url,
-              description: linkToDelete.description,
-              category: linkToDelete.category,
-              icon: linkToDelete.icon,
-              active: linkToDelete.active,
-            });
-
-            setData((curr) => {
-              if (!curr) return curr;
-              const nextLinks = [restored, ...(curr.links || []).filter((l) => l.id !== restored.id)];
-              nextLinks.sort((a, b) => {
-                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                return timeB - timeA;
-              });
-              return { ...curr, links: nextLinks };
-            });
-
-            showToast(`'${linkToDelete.title}' 링크를 복원했어요`);
-          } catch (e) {
-            console.warn("Firestore 복원 실패:", e);
-          } finally {
-            setIsUpdating(false);
-            setUpdateMessage("");
-          }
-        },
+        try {
+          localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
+        return updatedData;
       });
 
-      return updatedData;
-    });
+      showToast(`'${linkToDelete.title}' 링크가 삭제되었습니다.`);
+    } catch (error: any) {
+      console.error("Firestore 삭제 실패:", error);
+      showToast("삭제 실패: " + (error?.message || "다시 시도해 주세요"));
+      throw error;
+    } finally {
+      setIsUpdating(false);
+      setUpdateMessage("");
+    }
+  };
+
+  // 링크 인라인 수정 핸들러 (Firestore users/anonymous/links 연동)
+  const handleUpdateLink = async (
+    id: string,
+    updatedFields: Partial<Omit<LinkItem, "id">>
+  ) => {
+    try {
+      setIsUpdating(true);
+      setUpdateMessage("Firestore에 수정 내용을 저장하고 있어요...");
+
+      const updatedAt = new Date().toISOString();
+      const updatedWithTimestamp = {
+        ...updatedFields,
+        updatedAt,
+      };
+
+      // 1. Firestore users/anonymous/links 경로의 문서 업데이트 (updatedAt 포함)
+      await updateLinkInFirestore(id, updatedWithTimestamp);
+
+      // 2. 화면 목록 즉시 갱신
+      setData((prev) => {
+        if (!prev) return prev;
+        const currentLinks = prev.links || [];
+        const nextLinks = currentLinks.map((l) =>
+          l.id === id ? { ...l, ...updatedWithTimestamp } : l
+        );
+        const updatedData: MyLinkData = { ...prev, links: nextLinks };
+
+        try {
+          localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
+        return updatedData;
+      });
+
+      showToast(`'${updatedFields.title || "링크"}' 정보가 성공적으로 수정되었어요!`);
+    } catch (error: any) {
+      console.error("Firestore 수정 실패:", error);
+      showToast("수정 실패: " + (error?.message || "다시 시도해 주세요"));
+      throw error;
+    } finally {
+      setIsUpdating(false);
+      setUpdateMessage("");
+    }
   };
 
   // 샘플 링크 일괄 등록 핸들러 (Firestore가 비어있을 때 사용)
@@ -575,8 +597,10 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                   key={link.id}
                   link={link}
                   index={idx}
+                  existingLinks={data?.links}
                   onOpenLink={handleLinkOpen}
-                  onDeleteLink={handleDeleteLink}
+                  onDeleteLink={handleRequestDelete}
+                  onUpdateLink={handleUpdateLink}
                 />
               ))}
             </Card>
@@ -667,6 +691,14 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         onOpenChange={setIsAddDialogOpen}
         onAddLink={handleAddLink}
         existingLinks={data?.links}
+      />
+
+      {/* 링크 삭제 확인 모달 (Firestore users/anonymous/links 연동) */}
+      <DeleteLinkDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        link={deleteModalLink}
+        onConfirmDelete={handleConfirmDelete}
       />
 
       {/* TDS 스타일 토스트 알림 */}

@@ -20,9 +20,11 @@ const buttonVariants = cva(
         // TDS Ghost
         ghost:
           "text-[#4e5968] hover:text-[#191f28] hover:bg-[#f2f4f6]",
-        // TDS Danger (파괴적 액션)
+        // TDS Destructive / Danger (파괴적 액션)
+        destructive:
+          "bg-[#f04452] hover:bg-[#d63845] active:bg-[#bd2b37] text-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#f04452]/25",
         danger:
-          "bg-[#f04452] hover:bg-[#d63845] active:bg-[#bd2b37] text-white",
+          "bg-[#f04452] hover:bg-[#d63845] active:bg-[#bd2b37] text-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#f04452]/25",
         // TDS Outline
         outline:
           "border border-[#e5e8eb] bg-white hover:bg-[#f9fafb] text-[#191f28]",

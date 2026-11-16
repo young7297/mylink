@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Plus,
   Trash2,
+  Pencil,
   RotateCcw,
   Loader2,
 } from "lucide-react";
@@ -229,6 +230,7 @@ export {
   AlertCircle,
   Plus,
   Trash2,
+  Pencil,
   RotateCcw,
   Loader2,
 };

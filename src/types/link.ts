@@ -8,6 +8,7 @@ export interface LinkItem {
   active?: boolean;
   order?: number;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UserProfile {

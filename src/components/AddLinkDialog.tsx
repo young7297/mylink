@@ -21,54 +21,25 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  Loader2,
 } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
+import {
+  AVAILABLE_ICONS,
+  CATEGORY_SELECT_OPTIONS,
+  normalizeUrl,
+  validateTitleField,
+  validateUrlField,
+  validateDescriptionField,
+} from "@/lib/linkValidation";
 
-export const AVAILABLE_ICONS = [
-  { id: "link", label: "기본 링크" },
-  { id: "instagram", label: "Instagram" },
-  { id: "github", label: "GitHub" },
-  { id: "blog", label: "블로그" },
-  { id: "file-text", label: "이력서/노션" },
-  { id: "linkedin", label: "LinkedIn" },
-  { id: "figma", label: "Figma" },
-  { id: "globe", label: "웹사이트" },
-  { id: "message-circle", label: "카카오톡" },
-  { id: "mail", label: "이메일" },
-  { id: "gamepad", label: "프로젝트" },
-  { id: "codes", label: "저장소" },
-] as const;
-
-export const CATEGORY_SELECT_OPTIONS = [
-  { value: "projects", label: "프로젝트" },
-  { value: "skills", label: "기술스택" },
-  { value: "codes", label: "저장소" },
-  { value: "social", label: "소셜" },
-  { value: "contact", label: "연락처" },
-] as const;
+export { AVAILABLE_ICONS, CATEGORY_SELECT_OPTIONS };
 
 export interface AddLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddLink: (link: Omit<LinkItem, "id" | "order" | "createdAt">) => Promise<void> | void;
   existingLinks?: LinkItem[];
-}
-
-/**
- * URL 표준화 헬퍼 (중복 검사용)
- */
-function normalizeUrl(urlStr: string): string {
-  try {
-    const trimmed = urlStr.trim().toLowerCase();
-    if (trimmed.startsWith("mailto:")) {
-      return trimmed;
-    }
-    const full = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    const u = new URL(full);
-    return (u.hostname + u.pathname.replace(/\/$/, "")).toLowerCase();
-  } catch {
-    return urlStr.trim().toLowerCase();
-  }
 }
 
 export default function AddLinkDialog({
@@ -129,111 +100,19 @@ export default function AddLinkDialog({
   }, [open]);
 
   // 1. 제목 유효성 검증 함수
-  const validateTitleField = (val: string): string | undefined => {
-    const trimmed = val.trim();
-    if (!trimmed) {
-      return "링크 제목을 입력해 주세요.";
-    }
-    if (trimmed.length < 2) {
-      return "링크 제목은 최소 2자 이상 입력해 주세요.";
-    }
-    if (val.length > 50) {
-      return "링크 제목은 최대 50자까지 입력 가능해요.";
-    }
-    return undefined;
-  };
+  const validateTitle = (val: string) => validateTitleField(val);
 
   // 2. URL 유효성 검증 함수
-  const validateUrlField = (val: string): { error?: string; formattedUrl: string } => {
-    const trimmed = val.trim();
-    if (!trimmed) {
-      return { error: "링크 주소(URL)를 입력해 주세요.", formattedUrl: "" };
-    }
-
-    if (trimmed.length > 500) {
-      return { error: "링크 주소가 너무 길어요 (최대 500자).", formattedUrl: trimmed };
-    }
-
-    // mailto: 스킴 지원
-    if (trimmed.toLowerCase().startsWith("mailto:")) {
-      const email = trimmed.replace(/^mailto:/i, "").trim();
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(email)) {
-        return {
-          error: "올바른 이메일 주소 형식(예: mailto:name@example.com)을 입력해 주세요.",
-          formattedUrl: trimmed,
-        };
-      }
-      return { formattedUrl: `mailto:${email}` };
-    }
-
-    // 일반 웹 주소 프로토콜 보정
-    let formatted = trimmed;
-    if (!/^https?:\/\//i.test(formatted)) {
-      formatted = `https://${formatted}`;
-    }
-
-    try {
-      const parsed = new URL(formatted);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return {
-          error: "http 또는 https 형식의 올바른 웹 주소를 입력해 주세요.",
-          formattedUrl: formatted,
-        };
-      }
-
-      const hostname = parsed.hostname;
-      if (!hostname || hostname.length < 3) {
-        return {
-          error: "올바른 도메인 주소(예: https://example.com)를 입력해 주세요.",
-          formattedUrl: formatted,
-        };
-      }
-
-      // 점(.) 포함 여부 또는 localhost 허용
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
-      const hasValidDomain = /^[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(hostname);
-      if (!isLocalhost && !hasValidDomain) {
-        return {
-          error: "올바른 도메인 주소(예: velog.io, github.com)를 입력해 주세요.",
-          formattedUrl: formatted,
-        };
-      }
-
-      // 중복 링크 확인
-      const normalizedCurrent = normalizeUrl(formatted);
-      const isDuplicate = existingLinks.some(
-        (l) => normalizeUrl(l.url) === normalizedCurrent
-      );
-      if (isDuplicate) {
-        return {
-          error: "이미 목록에 등록되어 있는 링크 주소예요.",
-          formattedUrl: formatted,
-        };
-      }
-
-      return { formattedUrl: formatted };
-    } catch {
-      return {
-        error: "올바른 URL 형식(예: https://example.com)을 입력해 주세요.",
-        formattedUrl: formatted,
-      };
-    }
-  };
+  const validateUrl = (val: string) => validateUrlField(val, existingLinks);
 
   // 3. 설명 유효성 검증 함수
-  const validateDescriptionField = (val: string): string | undefined => {
-    if (val.length > 100) {
-      return "설명은 최대 100자까지 입력 가능해요.";
-    }
-    return undefined;
-  };
+  const validateDescription = (val: string) => validateDescriptionField(val);
 
   // 제목 변경 핸들러
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (touched.title) {
-      setErrors((prev) => ({ ...prev, title: validateTitleField(val) }));
+      setErrors((prev) => ({ ...prev, title: validateTitle(val) }));
     }
   };
 
@@ -241,7 +120,7 @@ export default function AddLinkDialog({
   const handleUrlChange = (value: string) => {
     setUrl(value);
     if (touched.url) {
-      const { error } = validateUrlField(value);
+      const { error } = validateUrl(value);
       setErrors((prev) => ({ ...prev, url: error }));
     }
 
@@ -289,7 +168,7 @@ export default function AddLinkDialog({
   const handleDescriptionChange = (val: string) => {
     setDescription(val);
     if (touched.description) {
-      setErrors((prev) => ({ ...prev, description: validateDescriptionField(val) }));
+      setErrors((prev) => ({ ...prev, description: validateDescription(val) }));
     }
   };
 
@@ -297,12 +176,12 @@ export default function AddLinkDialog({
   const handleBlur = (field: "title" | "url" | "description") => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     if (field === "title") {
-      setErrors((prev) => ({ ...prev, title: validateTitleField(title) }));
+      setErrors((prev) => ({ ...prev, title: validateTitle(title) }));
     } else if (field === "url") {
-      const { error } = validateUrlField(url);
+      const { error } = validateUrl(url);
       setErrors((prev) => ({ ...prev, url: error }));
     } else if (field === "description") {
-      setErrors((prev) => ({ ...prev, description: validateDescriptionField(description) }));
+      setErrors((prev) => ({ ...prev, description: validateDescription(description) }));
     }
   };
 
@@ -314,9 +193,9 @@ export default function AddLinkDialog({
     // 모든 필드를 touched 처리
     setTouched({ title: true, url: true, description: true });
 
-    const titleErr = validateTitleField(title);
-    const { error: urlErr, formattedUrl } = validateUrlField(url);
-    const descErr = validateDescriptionField(description);
+    const titleErr = validateTitle(title);
+    const { error: urlErr, formattedUrl } = validateUrl(url);
+    const descErr = validateDescription(description);
 
     setErrors({
       title: titleErr,
@@ -694,12 +573,10 @@ export default function AddLinkDialog({
               variant="primary"
               disabled={isSubmitting}
               className="gap-1.5 min-w-[90px]"
+              aria-label={isSubmitting ? "추가 중" : "추가하기"}
             >
               {isSubmitting ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>저장 중...</span>
-                </>
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
