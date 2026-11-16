@@ -146,6 +146,23 @@ body {
   background: linear-gradient(180deg, rgba(242, 244, 246, 0) 0%, rgba(242, 244, 246, 0.85) 30%, #f2f4f6 100%);
 }
 
+/* 상단 진행 프로그레스 바 애니메이션 */
+@keyframes progress-loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-progress-loading {
+  animation: progress-loading 1.2s infinite ease-in-out;
+}
+
 @layer base {
   * {
     @apply border-border;

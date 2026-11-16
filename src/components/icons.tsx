@@ -24,6 +24,8 @@ import {
   AlertCircle,
   Plus,
   Trash2,
+  RotateCcw,
+  Loader2,
 } from "lucide-react";
 
 export function GitHubIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -227,4 +229,6 @@ export {
   AlertCircle,
   Plus,
   Trash2,
+  RotateCcw,
+  Loader2,
 };

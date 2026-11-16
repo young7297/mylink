@@ -11,11 +11,12 @@ import ProfileHeader from "@/components/ProfileHeader";
 import LinkCard from "@/components/LinkCard";
 import AddLinkDialog from "@/components/AddLinkDialog";
 import Toast from "@/components/Toast";
-import { Search, X, Share2, Plus } from "@/components/icons";
+import { Search, X, Share2, Plus, RotateCcw, Loader2 } from "@/components/icons";
 import {
   addLinkToFirestore,
   deleteLinkFromFirestore,
-  subscribeLinksFromFirestore,
+  getLinksFromFirestore,
+  seedSampleLinksToFirestore,
 } from "@/lib/linkService";
 
 // TDS 기반 UI 컴포넌트
@@ -60,23 +61,67 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
   // 링크 추가 다이얼로그 상태
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+  // 샘플 데이터 시딩 로딩 상태
+  const [isSeeding, setIsSeeding] = useState<boolean>(false);
+
+  // 업데이트 및 갱신 상태 관리
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [updateMessage, setUpdateMessage] = useState<string>("");
+
+  // 수동 새로고침 핸들러 (Firestore에서 최신 링크 다시 조회)
+  const handleRefresh = async () => {
+    if (isRefreshing || isUpdating) return;
+
+    try {
+      setIsRefreshing(true);
+      setUpdateMessage("최신 링크를 불러오고 있어요...");
+      const firestoreLinks = await getLinksFromFirestore();
+
+      setData((prev) => {
+        if (!prev) return prev;
+        const updatedData = { ...prev, links: firestoreLinks };
+        try {
+          localStorage.setItem("mylink_data", JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
+        return updatedData;
+      });
+
+      showToast("최신 링크 목록을 불러왔어요");
+    } catch (error: any) {
+      console.error("새로고침 실패:", error);
+      showToast("새로고침 실패: " + (error?.message || "다시 시도해 주세요"));
+    } finally {
+      setIsRefreshing(false);
+      setUpdateMessage("");
+    }
+  };
 
   // Firestore 연동 링크 추가 핸들러 (경로: users/anonymous/links)
   const handleAddLink = async (
     newLinkData: Omit<LinkItem, "id" | "order" | "createdAt">
   ) => {
     try {
-      const currentOrder = data?.links?.length || 0;
-      // Firestore users/anonymous/links 컬렉션에 추가
-      const savedLink = await addLinkToFirestore(newLinkData, currentOrder);
+      setIsUpdating(true);
+      setUpdateMessage("새 링크를 Firestore에 저장하고 있어요...");
 
+      // 1. Firestore users/anonymous/links 컬렉션에 추가
+      const savedLink = await addLinkToFirestore(newLinkData, 0);
+
+      // 2. 화면 목록 즉시 갱신 (createdAt 기준 최신순 정렬)
       setData((prev) => {
         if (!prev) return prev;
-        // Firestore snapshot에 의해 이미 반영되었을 수 있으므로 중복 방지
-        const filtered = (prev.links || []).filter((l) => l.id !== savedLink.id);
-        const updatedLinks = [savedLink, ...filtered];
-        const updatedData: MyLinkData = { ...prev, links: updatedLinks };
+        const currentLinks = prev.links || [];
+        const nextLinks = [savedLink, ...currentLinks.filter((l) => l.id !== savedLink.id)];
+        nextLinks.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        });
 
+        const updatedData: MyLinkData = { ...prev, links: nextLinks };
         try {
           localStorage.setItem("mylink_data", JSON.stringify(updatedData));
         } catch (e) {
@@ -86,16 +131,22 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         return updatedData;
       });
 
-      showToast(`'${savedLink.title}' 링크가 Firestore에 안전하게 저장되었어요!`);
+      showToast(`'${savedLink.title}' 링크가 성공적으로 추가되었어요!`);
     } catch (error: any) {
       console.error("Firestore 저장 실패:", error);
       showToast("Firestore 저장 실패: " + (error?.message || "다시 시도해 주세요"));
       throw error;
+    } finally {
+      setIsUpdating(false);
+      setUpdateMessage("");
     }
   };
 
   // 링크 삭제 핸들러 (로컬 상태 + Firestore 삭제 + PRD 시나리오 E: 실행 취소 Undo 지원)
   const handleDeleteLink = (linkToDelete: LinkItem) => {
+    setIsUpdating(true);
+    setUpdateMessage("링크를 삭제하고 있어요...");
+
     setData((prev) => {
       if (!prev) return prev;
       const originalLinks = [...prev.links];
@@ -109,28 +160,24 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       }
 
       // Firestore에서 삭제 시도 (users/anonymous/links)
-      deleteLinkFromFirestore(linkToDelete.id).catch((e) => {
-        console.warn("Firestore 삭제 스킵 또는 에러:", e);
-      });
+      deleteLinkFromFirestore(linkToDelete.id)
+        .catch((e) => {
+          console.warn("Firestore 삭제 스킵 또는 에러:", e);
+        })
+        .finally(() => {
+          setIsUpdating(false);
+          setUpdateMessage("");
+        });
 
       // 3.5초간 실행 취소(Undo) 토스트 제공
       showToast(`'${linkToDelete.title}' 링크를 삭제했어요`, {
         label: "실행 취소",
         onClick: async () => {
-          setData((curr) => {
-            if (!curr) return curr;
-            const restoredData = { ...curr, links: originalLinks };
-            try {
-              localStorage.setItem("mylink_data", JSON.stringify(restoredData));
-            } catch (e) {
-              console.warn(e);
-            }
-            return restoredData;
-          });
-
-          // Firestore에 다시 추가 복원
           try {
-            await addLinkToFirestore({
+            setIsUpdating(true);
+            setUpdateMessage("링크를 복원하고 있어요...");
+
+            const restored = await addLinkToFirestore({
               title: linkToDelete.title,
               url: linkToDelete.url,
               description: linkToDelete.description,
@@ -138,10 +185,25 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
               icon: linkToDelete.icon,
               active: linkToDelete.active,
             });
+
+            setData((curr) => {
+              if (!curr) return curr;
+              const nextLinks = [restored, ...(curr.links || []).filter((l) => l.id !== restored.id)];
+              nextLinks.sort((a, b) => {
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return timeB - timeA;
+              });
+              return { ...curr, links: nextLinks };
+            });
+
+            showToast(`'${linkToDelete.title}' 링크를 복원했어요`);
           } catch (e) {
             console.warn("Firestore 복원 실패:", e);
+          } finally {
+            setIsUpdating(false);
+            setUpdateMessage("");
           }
-          showToast(`'${linkToDelete.title}' 링크를 복원했어요`);
         },
       });
 
@@ -149,74 +211,79 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     });
   };
 
-  // Firestore 실시간 구독 (users/anonymous/links)
-  useEffect(() => {
-    const unsubscribe = subscribeLinksFromFirestore(
-      (firestoreLinks) => {
-        if (!firestoreLinks || firestoreLinks.length === 0) return;
-
-        setData((prev) => {
-          if (!prev) return prev;
-          const firestoreIds = new Set(firestoreLinks.map((l) => l.id));
-          const baseLinks = prev.links ? prev.links : MOCK_MYLINK_DATA.links;
-          const nonDuplicateBase = baseLinks.filter((l) => !firestoreIds.has(l.id));
-          const combined = [...firestoreLinks, ...nonDuplicateBase];
-
-          return { ...prev, links: combined };
-        });
-      },
-      (err) => {
-        console.warn("Firestore subscription error:", err);
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // 데이터 로딩 (localStorage -> Mock Data fallback)
-  useEffect(() => {
-    setIsLoading(true);
-    setIsNotFound(false);
-
+  // 샘플 링크 일괄 등록 핸들러 (Firestore가 비어있을 때 사용)
+  const handleSeedSampleLinks = async () => {
     try {
-      // 1. 슬러그 정규화 (links는 dayoung으로 처리)
-      const targetSlug = slug === "links" ? "dayoung" : slug.toLowerCase();
+      setIsSeeding(true);
+      setIsUpdating(true);
+      setUpdateMessage("샘플 링크 8개를 Firestore에 등록하고 있어요...");
 
-      // 2. localStorage 우선 확인
-      const storedJson = typeof window !== "undefined" ? localStorage.getItem("mylink_data") : null;
-      let loadedData: MyLinkData | null = null;
+      const seeded = await seedSampleLinksToFirestore(MOCK_MYLINK_DATA.links);
+      setData((prev) => {
+        if (!prev) return prev;
+        return { ...prev, links: seeded };
+      });
+      showToast("샘플 링크 8개가 Firestore에 등록되었어요!");
+    } catch (error: any) {
+      console.error("샘플 등록 실패:", error);
+      showToast("샘플 등록 실패: " + (error?.message || "다시 시도해 주세요"));
+    } finally {
+      setIsSeeding(false);
+      setIsUpdating(false);
+      setUpdateMessage("");
+    }
+  };
 
-      if (storedJson) {
-        try {
-          const parsed = JSON.parse(storedJson) as MyLinkData;
-          if (parsed && parsed.slug && parsed.slug.toLowerCase() === targetSlug) {
-            loadedData = parsed;
-          }
-        } catch {
-          // parse failed, fallback to mock
-        }
-      }
+  // 데이터 로딩 (페이지 로드 시 Firestore users/anonymous/links에서 최신순 링크 조회)
+  useEffect(() => {
+    let isMounted = true;
 
-      // 3. Mock Data 매핑
-      if (!loadedData) {
-        if (targetSlug === "dayoung") {
-          loadedData = MOCK_MYLINK_DATA;
-        } else {
-          // 일치하는 데이터 없음 -> 404
+    async function loadData() {
+      setIsLoading(true);
+      setIsNotFound(false);
+
+      try {
+        const targetSlug = slug === "links" ? "dayoung" : slug.toLowerCase();
+
+        // 일치하는 프로필 슬러그 체크
+        if (targetSlug !== "dayoung") {
           setIsNotFound(true);
           setIsLoading(false);
           return;
         }
-      }
 
-      setData(loadedData);
-    } catch {
-      setIsNotFound(true);
-    } finally {
-      setIsLoading(false);
+        const baseData = MOCK_MYLINK_DATA;
+
+        // 페이지 로드 시 Firestore(users/anonymous/links)에서 최신순 링크 조회
+        const firestoreLinks = await getLinksFromFirestore();
+
+        if (isMounted) {
+          setData({
+            slug: targetSlug,
+            profile: baseData.profile,
+            theme: baseData.theme,
+            socials: baseData.socials,
+            links: firestoreLinks,
+          });
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Firestore 초기 데이터 로딩 실패:", err);
+        if (isMounted) {
+          setData({
+            ...MOCK_MYLINK_DATA,
+            links: [],
+          });
+          setIsLoading(false);
+        }
+      }
     }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   // 필터링된 링크 목록
@@ -329,7 +396,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             <span className="w-3 h-3 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
           <p className="text-sm font-medium text-[#6b7684]">
-            잠시만 기다려 주세요...
+            Firestore에서 링크를 불러오고 있어요...
           </p>
         </div>
       </main>
@@ -342,7 +409,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       {/* ========================================================= */}
       {/* 1. 상단 내비게이션 바 (TopAppBar: 56px)                   */}
       {/* ========================================================= */}
-      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70">
+      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70 relative">
         <div className="max-w-[520px] mx-auto h-14 px-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-[#191f28] font-bold text-lg hover:text-[#3182f6] transition-colors">
             <span className="w-7 h-7 rounded-xl bg-[#3182f6] text-white flex items-center justify-center text-xs font-black shadow-sm">
@@ -353,10 +420,26 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
           <div className="flex items-center gap-2">
             <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isUpdating}
+              className="gap-1 font-medium text-xs text-[#4e5968] h-8 px-2.5"
+              title="Firestore에서 새로고침"
+            >
+              <RotateCcw
+                className={`w-3.5 h-3.5 ${
+                  isRefreshing ? "animate-spin text-[#3182f6]" : ""
+                }`}
+              />
+              <span className="hidden sm:inline">새로고침</span>
+            </Button>
+            <Button
               variant="primary"
               size="sm"
               onClick={() => setIsAddDialogOpen(true)}
-              className="gap-1 shadow-sm font-semibold"
+              className="gap-1 shadow-sm font-semibold h-8"
+              disabled={isUpdating}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>링크 추가</span>
@@ -366,6 +449,13 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             </span>
           </div>
         </div>
+
+        {/* 상단 프로그레스 바 (업데이트 및 갱신 중 로딩 인디케이터) */}
+        {(isRefreshing || isUpdating) && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e8f3ff] overflow-hidden">
+            <div className="h-full bg-[#3182f6] animate-progress-loading w-full origin-left" />
+          </div>
+        )}
       </header>
 
       {/* ========================================================= */}
@@ -373,6 +463,16 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       {/* ========================================================= */}
       <div className="w-full max-w-[520px] px-4 pt-4 flex flex-col">
         
+        {/* 업데이트/갱신 진행 상태 알림 뱃지 */}
+        {(isRefreshing || isUpdating) && (
+          <div className="w-full flex items-center justify-center mb-3 animate-in fade-in duration-200">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8f3ff] text-[#3182f6] text-xs font-semibold shadow-xs">
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-[#3182f6]" />
+              <span>{updateMessage || "목록을 갱신하고 있어요..."}</span>
+            </div>
+          </div>
+        )}
+
         {/* 프로필 헤더 */}
         <ProfileHeader
           profile={data.profile}
@@ -462,7 +562,12 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         {/* ======================================================= */}
         {/* 4. 링크 리스트 카드 (토스 목록 뷰)                      */}
         {/* ======================================================= */}
-        <section aria-label="링크 목록" className="w-full">
+        <section
+          aria-label="링크 목록"
+          className={`w-full transition-opacity duration-200 ${
+            isRefreshing ? "opacity-60 pointer-events-none" : "opacity-100"
+          }`}
+        >
           {filteredLinks.length > 0 ? (
             <Card className="p-1 sm:p-2 divide-y divide-[#e5e8eb]/70 shadow-toss-1 overflow-hidden">
               {filteredLinks.map((link, idx) => (
@@ -479,13 +584,17 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             /* 빈 결과 화면 */
             <Card className="w-full p-8 text-center my-2 shadow-toss-1">
               <div className="w-12 h-12 mx-auto mb-3 bg-[#f2f4f6] text-[#8b95a1] rounded-full flex items-center justify-center text-xl">
-                🔍
+                {searchQuery.trim() || selectedCategory !== "all" ? "🔍" : "🔗"}
               </div>
               <p className="text-base font-bold text-[#191f28] mb-1">
-                검색된 링크가 없어요
+                {searchQuery.trim() || selectedCategory !== "all"
+                  ? "검색된 링크가 없어요"
+                  : "등록된 링크가 없어요"}
               </p>
               <p className="text-sm text-[#6b7684] mb-4">
-                새로운 링크를 직접 등록하거나 검색어 및 필터를 초기화해 보세요.
+                {searchQuery.trim() || selectedCategory !== "all"
+                  ? "검색어 또는 카테고리 필터를 초기화해 보세요."
+                  : "첫 번째 링크를 등록하거나 샘플 링크를 불러와 보세요."}
               </p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <Button
@@ -497,17 +606,29 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                   <Plus className="w-3.5 h-3.5" />
                   <span>새 링크 추가하기</span>
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedCategory("all");
-                    setSearchQuery("");
-                    setShowInactive(true);
-                  }}
-                >
-                  필터 초기화하기
-                </Button>
+                {searchQuery.trim() || selectedCategory !== "all" ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setSearchQuery("");
+                      setShowInactive(true);
+                    }}
+                  >
+                    필터 초기화하기
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleSeedSampleLinks}
+                    disabled={isSeeding}
+                    className="gap-1.5"
+                  >
+                    <span>{isSeeding ? "샘플 등록 중..." : "샘플 링크 불러오기"}</span>
+                  </Button>
+                )}
               </div>
             </Card>
           )}
