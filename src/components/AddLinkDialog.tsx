@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   AVAILABLE_ICONS,
   CATEGORY_SELECT_OPTIONS,
-  normalizeUrl,
   validateTitleField,
   validateUrlField,
   validateDescriptionField,
@@ -84,18 +83,20 @@ export default function AddLinkDialog({
   // 다이얼로그 열릴 때 폼 초기화
   useEffect(() => {
     if (open) {
-      setTitle("");
-      setUrl("");
-      setDescription("");
-      setCategory("projects");
-      setIcon("link");
-      setActive(true);
-      setErrors({});
-      setTouched({});
-      setIsManualIcon(false);
-      setIsManualCategory(false);
-      setIsSubmitting(false);
-      setSubmitError(null);
+      queueMicrotask(() => {
+        setTitle("");
+        setUrl("");
+        setDescription("");
+        setCategory("projects");
+        setIcon("link");
+        setActive(true);
+        setErrors({});
+        setTouched({});
+        setIsManualIcon(false);
+        setIsManualCategory(false);
+        setIsSubmitting(false);
+        setSubmitError(null);
+      });
     }
   }, [open]);
 
@@ -229,10 +230,11 @@ export default function AddLinkDialog({
       });
 
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
       console.error("Link add error:", err);
       setSubmitError(
-        err?.message || "링크를 저장하는 중 오류가 발생했습니다. 다시 시도해 주세요."
+        errorObj?.message || "링크를 저장하는 중 오류가 발생했습니다. 다시 시도해 주세요."
       );
     } finally {
       setIsSubmitting(false);

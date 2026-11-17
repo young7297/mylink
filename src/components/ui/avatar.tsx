@@ -1,8 +1,10 @@
 import * as React from "react";
 import Image, { ImageProps } from "next/image";
+import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { cn } from "@/lib/utils";
 
-export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AvatarProps
+  extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
   shape?: "circle" | "rounded" | "squircle";
   size?: "sm" | "md" | "lg" | "xl";
 }
@@ -20,25 +22,24 @@ const shapeClasses = {
   squircle: "rounded-[22px]",
 };
 
-function Avatar({
-  className,
-  shape = "circle",
-  size = "lg",
-  ...props
-}: AvatarProps) {
-  return (
-    <div
-      data-slot="avatar"
-      className={cn(
-        "relative shrink-0 overflow-hidden bg-[#e8f3ff] border border-[#e5e8eb] shadow-sm select-none",
-        sizeClasses[size],
-        shapeClasses[shape],
-        className
-      )}
-      {...props}
-    />
-  );
-}
+const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
+  ({ className, shape = "circle", size = "lg", ...props }, ref) => {
+    return (
+      <AvatarPrimitive.Root
+        ref={ref}
+        data-slot="avatar"
+        className={cn(
+          "relative inline-flex shrink-0 overflow-hidden bg-[#e8f3ff] border border-[#e5e8eb] shadow-sm select-none",
+          sizeClasses[size],
+          shapeClasses[shape],
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+Avatar.displayName = "Avatar";
 
 function AvatarImage({
   src,
@@ -62,13 +63,13 @@ function AvatarImage({
   );
 }
 
-function AvatarFallback({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+const AvatarFallback = React.forwardRef<
+  HTMLSpanElement,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ children, className, ...props }, ref) => {
   return (
-    <div
+    <AvatarPrimitive.Fallback
+      ref={ref}
       data-slot="avatar-fallback"
       className={cn(
         "flex h-full w-full items-center justify-center bg-[#e8f3ff] text-[#3182f6] text-sm font-bold",
@@ -77,8 +78,9 @@ function AvatarFallback({
       {...props}
     >
       {children}
-    </div>
+    </AvatarPrimitive.Fallback>
   );
-}
+});
+AvatarFallback.displayName = "AvatarFallback";
 
 export { Avatar, AvatarImage, AvatarFallback };

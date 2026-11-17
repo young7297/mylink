@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Input as BaseInput } from "@base-ui/react/input";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -29,13 +30,13 @@ const inputVariants = cva(
 );
 
 export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
+  extends Omit<React.ComponentPropsWithoutRef<typeof BaseInput>, "size">,
     VariantProps<typeof inputVariants> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, variant, sizeVariant, type = "text", ...props }, ref) => {
     return (
-      <input
+      <BaseInput
         ref={ref}
         type={type}
         data-slot="input"

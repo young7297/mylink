@@ -57,7 +57,6 @@ function formatUpdatedAt(dateStr?: string): string | null {
 
 export default function LinkCard({
   link,
-  index,
   existingLinks = [],
   onOpenLink,
   onDeleteLink,
@@ -105,18 +104,20 @@ export default function LinkCard({
   // props가 변경되거나 편집 모드로 진입할 때 폼 초기화
   useEffect(() => {
     if (isEditing) {
-      setEditTitle(link.title);
-      setEditUrl(link.url);
-      setEditDescription(link.description || "");
-      setEditCategory(link.category || "projects");
-      setEditIcon(link.icon || "link");
-      setEditActive(link.active !== false);
-      setErrors({});
-      setTouched({});
-      setIsManualIcon(false);
-      setIsManualCategory(false);
-      setIsSaving(false);
-      setSaveError(null);
+      queueMicrotask(() => {
+        setEditTitle(link.title);
+        setEditUrl(link.url);
+        setEditDescription(link.description || "");
+        setEditCategory(link.category || "projects");
+        setEditIcon(link.icon || "link");
+        setEditActive(link.active !== false);
+        setErrors({});
+        setTouched({});
+        setIsManualIcon(false);
+        setIsManualCategory(false);
+        setIsSaving(false);
+        setSaveError(null);
+      });
     }
   }, [isEditing, link]);
 
@@ -272,9 +273,10 @@ export default function LinkCard({
       });
 
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
       console.error("Link update error:", err);
-      setSaveError(err?.message || "링크 수정 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      setSaveError(errorObj?.message || "링크 수정 중 오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setIsSaving(false);
     }

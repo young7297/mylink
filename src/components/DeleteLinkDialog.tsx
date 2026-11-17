@@ -36,10 +36,11 @@ export default function DeleteLinkDialog({
       setErrorMessage(null);
       await onConfirmDelete(link);
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
       console.error("Link delete error:", err);
       setErrorMessage(
-        err?.message || "링크를 삭제하는 중 오류가 발생했습니다. 다시 시도해 주세요."
+        errorObj?.message || "링크를 삭제하는 중 오류가 발생했습니다. 다시 시도해 주세요."
       );
     } finally {
       setIsDeleting(false);

@@ -7,10 +7,12 @@ import {
   LinkedInIcon,
   VelogIcon,
   InstagramIcon,
+  GoogleIcon,
   Mail,
   Share2,
   Copy,
   Check,
+  Database,
 } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
@@ -49,8 +51,8 @@ export default function ProfileHeader({
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : `https://young7297.github.io/mylink/${slug}`;
     const shareData = {
-      title: `${profile.name} — 마이링크`,
-      text: `${profile.name}님의 링크 허브예요.`,
+      title: `${profile.name} — 마이페이지`,
+      text: `${profile.name}님의 마이페이지 링크 모음이에요.`,
       url,
     };
 
@@ -79,10 +81,17 @@ export default function ProfileHeader({
     <Card className="w-full p-5 sm:p-6 mb-4">
       {/* 1. 상단 미니 바: 상태 뱃지 및 공유 버튼 */}
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#e5e8eb]/70">
-        <div className="flex items-center gap-2">
-          <Badge variant="default" size="sm">
-            공개 링크 허브
-          </Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          {profile.isGoogleAuth ? (
+            <Badge variant="default" size="sm" className="bg-[#e8f3ff] text-[#3182f6] border border-[#3182f6]/20 font-semibold gap-1">
+              <GoogleIcon className="w-3 h-3" />
+              <span>Google 인증 사용자</span>
+            </Badge>
+          ) : (
+            <Badge variant="default" size="sm">
+              공개 마이페이지
+            </Badge>
+          )}
           <span className="text-[12px] font-normal text-[#8b95a1]">
             /{slug}
           </span>
@@ -136,6 +145,14 @@ export default function ProfileHeader({
             )}
           </div>
 
+          {/* 이메일 메타 */}
+          {profile.email && (
+            <p className="text-[12px] text-[#6b7684] flex items-center gap-1 mb-1 font-medium">
+              <Mail className="w-3 h-3 text-[#8b95a1] shrink-0" />
+              <span>{profile.email}</span>
+            </p>
+          )}
+
           {/* 위치 메타 */}
           {profile.location && (
             <p className="text-[12px] text-[#8b95a1] mb-2">
@@ -151,6 +168,25 @@ export default function ProfileHeader({
           )}
         </div>
       </div>
+
+      {/* 3. Firestore 개인화 경로 표시 영역 (user/{uid}/links) */}
+      {profile.uid && (
+        <div className="mt-4 p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 text-[#475569] min-w-0">
+            <Database className="w-3.5 h-3.5 text-[#3182f6] shrink-0" />
+            <span className="text-[#64748b] shrink-0 font-medium">개인화 경로:</span>
+            <code className="px-1.5 py-0.5 rounded bg-[#e8f3ff] text-[#3182f6] font-mono font-semibold text-[11.5px] truncate">
+              user/{profile.uid}/links
+            </code>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] shrink-0 font-mono">
+            <span>UID:</span>
+            <span className="text-[#1e293b] font-medium" title={profile.uid}>
+              {profile.uid.slice(0, 8)}...
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 3. 소셜 링크 칩 바 */}
       <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[#e5e8eb]/70 flex-wrap">

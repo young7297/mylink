@@ -3,6 +3,8 @@ import {
   collection,
   doc,
   addDoc,
+  getDoc,
+  setDoc,
   getDocs,
   deleteDoc,
   updateDoc,
@@ -10,22 +12,28 @@ import {
   orderBy,
   QuerySnapshot,
   DocumentData,
+  QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { LinkItem } from "@/types/link";
+import { LinkItem, UserProfile } from "@/types/link";
+import { getEmailPrefix } from "@/lib/utils";
 
 /**
- * Firestore 컬렉션 경로: users/anonymous/links
+ * Firestore 개인화 경로 헬퍼: user/{uid}/links
  */
-export const FIRESTORE_LINKS_PATH = "users/anonymous/links";
+export const getUserLinksPath = (uid: string) => `user/${uid}/links`;
 
-export const getLinksCollectionRef = () => {
-  return collection(db, "users", "anonymous", "links");
+export const getUserLinksCollectionRef = (uid: string) => {
+  return collection(db, "user", uid, "links");
+};
+
+export const getUserDocRef = (uid: string) => {
+  return doc(db, "user", uid);
 };
 
 /**
  * Firestore 문서 데이터를 LinkItem 인터페이스로 변환
  */
-function mapDocToLinkItem(docSnap: any): LinkItem {
+function mapDocToLinkItem(docSnap: QueryDocumentSnapshot<DocumentData>): LinkItem {
   const data = docSnap.data();
   let createdAtStr = new Date().toISOString();
   if (typeof data.createdAt === "string") {
@@ -60,18 +68,123 @@ function mapDocToLinkItem(docSnap: any): LinkItem {
 }
 
 /**
- * Firestore users/anonymous/links 컬렉션에 링크 추가
+ * user/{uid} 경로에서 유저 프로필 조회
+ */
+export async function getUserProfileFromFirestore(uid: string): Promise<UserProfile | null> {
+  if (!uid) return null;
+  try {
+    const docRef = getUserDocRef(uid);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    const email = data.email || "";
+    const displayName = getEmailPrefix(email, data.name || "사용자");
+    return {
+      uid,
+      name: displayName,
+      email,
+      bio: data.bio || "나만의 링크를 한곳에서 관리하고 공유해요.",
+      avatarUrl: data.avatarUrl || "/profile.png",
+      jobTitle: data.jobTitle || "마이페이지 회원",
+      location: data.location || "대한민국",
+      firestorePath: `user/${uid}/links`,
+      isGoogleAuth: true,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    };
+  } catch (error) {
+    console.warn("Failed to get user profile from Firestore:", error);
+    return null;
+  }
+}
+
+/**
+ * Google 로그인 성공 시 user/{uid} 경로에 유저 프로필 동기화 및 저장
+ */
+export async function syncUserProfileToFirestore(authUser: {
+  uid: string;
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+}): Promise<UserProfile> {
+  const uid = authUser.uid;
+  const now = new Date().toISOString();
+  const email = authUser.email || "";
+  const displayName = getEmailPrefix(email, authUser.displayName || "Google 사용자");
+
+  const defaultProfile: UserProfile = {
+    uid,
+    name: displayName,
+    email,
+    avatarUrl: authUser.photoURL || "/profile.png",
+    bio: "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
+    jobTitle: "마이페이지 회원",
+    location: "대한민국",
+    firestorePath: `user/${uid}/links`,
+    isGoogleAuth: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    const docRef = getUserDocRef(uid);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      // 최초 생성: Firestore user/{uid} 경로에 저장
+      await setDoc(docRef, {
+        ...defaultProfile,
+        lastLoginAt: now,
+      });
+      return defaultProfile;
+    } else {
+      // 기존 문서가 존재하면 이메일 앞부분 기반으로 display name 최신화
+      const existing = snap.data();
+      const updatedProfile: UserProfile = {
+        uid,
+        name: displayName,
+        email,
+        avatarUrl: authUser.photoURL || existing.avatarUrl || "/profile.png",
+        bio: existing.bio || "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
+        jobTitle: existing.jobTitle || "마이페이지 회원",
+        location: existing.location || "대한민국",
+        firestorePath: `user/${uid}/links`,
+        isGoogleAuth: true,
+        createdAt: existing.createdAt || now,
+        updatedAt: now,
+      };
+
+      await setDoc(
+        docRef,
+        {
+          ...updatedProfile,
+          lastLoginAt: now,
+        },
+        { merge: true }
+      );
+
+      return updatedProfile;
+    }
+  } catch (error) {
+    console.warn("Failed to sync user profile with Firestore (fallback to auth profile):", error);
+    return defaultProfile;
+  }
+}
+
+/**
+ * Firestore user/{uid}/links 컬렉션에 링크 추가
  */
 export async function addLinkToFirestore(
+  uid: string,
   linkData: Omit<LinkItem, "id" | "order" | "createdAt">,
   order: number = 0
 ): Promise<LinkItem> {
-  const colRef = getLinksCollectionRef();
+  if (!uid) throw new Error("사용자 UID가 필요합니다.");
+  const colRef = getUserLinksCollectionRef(uid);
   const createdAt = new Date().toISOString();
-  const updatedAt = (linkData as any).updatedAt || createdAt;
+  const updatedAt = (linkData as { updatedAt?: string }).updatedAt || createdAt;
 
-  // undefined 필드는 Firestore 저장 시 에러를 유발하므로 정제
-  const payload: Record<string, any> = {
+  const payload: Record<string, unknown> = {
     title: linkData.title,
     url: linkData.url,
     category: linkData.category || "projects",
@@ -90,37 +203,37 @@ export async function addLinkToFirestore(
 
   return {
     id: docRef.id,
-    title: payload.title,
-    url: payload.url,
-    description: payload.description,
-    category: payload.category,
-    icon: payload.icon,
-    active: payload.active,
-    order: payload.order,
-    createdAt: payload.createdAt,
-    updatedAt: payload.updatedAt,
+    title: payload.title as string,
+    url: payload.url as string,
+    description: payload.description as string | undefined,
+    category: payload.category as string,
+    icon: payload.icon as string,
+    active: payload.active as boolean,
+    order: payload.order as number,
+    createdAt: payload.createdAt as string,
+    updatedAt: payload.updatedAt as string,
   };
 }
 
 /**
- * Firestore users/anonymous/links 컬렉션의 모든 링크 목록 조회 (createdAt 기준 최신순 정렬)
+ * Firestore user/{uid}/links 컬렉션의 모든 링크 목록 조회 (createdAt 기준 최신순 정렬)
  */
-export async function getLinksFromFirestore(): Promise<LinkItem[]> {
+export async function getLinksFromFirestore(uid: string): Promise<LinkItem[]> {
+  if (!uid) return [];
   try {
-    const colRef = getLinksCollectionRef();
+    const colRef = getUserLinksCollectionRef(uid);
     let snapshot: QuerySnapshot<DocumentData>;
 
     try {
       const q = query(colRef, orderBy("createdAt", "desc"));
       snapshot = await getDocs(q);
     } catch {
-      // 인덱스 또는 필드 누락 등의 예외 상황 대비 fallback
       snapshot = await getDocs(colRef);
     }
 
     const links = snapshot.docs.map(mapDocToLinkItem);
 
-    // createdAt 기준 최신순 정렬 보장
+    // 최신 등록순 정렬
     links.sort((a, b) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -129,17 +242,18 @@ export async function getLinksFromFirestore(): Promise<LinkItem[]> {
 
     return links;
   } catch (error) {
-    console.warn("Failed to get links from Firestore:", error);
+    console.warn(`Failed to get links from Firestore (user/${uid}/links):`, error);
     return [];
   }
 }
 
 /**
- * Firestore users/anonymous/links 컬렉션에서 특정 링크 삭제
+ * Firestore user/{uid}/links 컬렉션에서 특정 링크 삭제
  */
-export async function deleteLinkFromFirestore(id: string): Promise<void> {
+export async function deleteLinkFromFirestore(uid: string, id: string): Promise<void> {
+  if (!uid) throw new Error("사용자 UID가 필요합니다.");
   try {
-    const docRef = doc(db, "users", "anonymous", "links", id);
+    const docRef = doc(db, "user", uid, "links", id);
     await deleteDoc(docRef);
   } catch (error) {
     console.warn(`Failed to delete link (${id}) from Firestore:`, error);
@@ -148,15 +262,17 @@ export async function deleteLinkFromFirestore(id: string): Promise<void> {
 }
 
 /**
- * Firestore users/anonymous/links 컬렉션에서 특정 링크 수정
+ * Firestore user/{uid}/links 컬렉션에서 특정 링크 수정
  */
 export async function updateLinkInFirestore(
+  uid: string,
   id: string,
   linkData: Partial<Omit<LinkItem, "id">>
 ): Promise<void> {
+  if (!uid) throw new Error("사용자 UID가 필요합니다.");
   try {
-    const docRef = doc(db, "users", "anonymous", "links", id);
-    const payload: Record<string, any> = {};
+    const docRef = doc(db, "user", uid, "links", id);
+    const payload: Record<string, unknown> = {};
 
     if (linkData.title !== undefined) payload.title = linkData.title.trim();
     if (linkData.url !== undefined) payload.url = linkData.url.trim();
@@ -168,7 +284,6 @@ export async function updateLinkInFirestore(
     if (linkData.active !== undefined) payload.active = linkData.active;
     if (linkData.order !== undefined) payload.order = linkData.order;
 
-    // 수정 시각(updatedAt) 자동 기록
     payload.updatedAt = linkData.updatedAt || new Date().toISOString();
 
     await updateDoc(docRef, payload);
@@ -179,16 +294,20 @@ export async function updateLinkInFirestore(
 }
 
 /**
- * Firestore users/anonymous/links 컬렉션에 샘플 링크 일괄 등록 헬퍼
+ * Firestore user/{uid}/links 컬렉션에 샘플 링크 일괄 등록 헬퍼
  */
-export async function seedSampleLinksToFirestore(sampleLinks: LinkItem[]): Promise<LinkItem[]> {
-  const colRef = getLinksCollectionRef();
+export async function seedSampleLinksToFirestore(
+  uid: string,
+  sampleLinks: LinkItem[]
+): Promise<LinkItem[]> {
+  if (!uid) throw new Error("사용자 UID가 필요합니다.");
+  const colRef = getUserLinksCollectionRef(uid);
   const added: LinkItem[] = [];
 
   for (let i = 0; i < sampleLinks.length; i++) {
     const s = sampleLinks[i];
     const createdAt = new Date(Date.now() - (sampleLinks.length - i) * 1000).toISOString();
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       title: s.title,
       url: s.url,
       category: s.category || "projects",
@@ -196,20 +315,22 @@ export async function seedSampleLinksToFirestore(sampleLinks: LinkItem[]): Promi
       active: s.active !== false,
       order: s.order ?? i,
       createdAt,
+      updatedAt: createdAt,
     };
     if (s.description) payload.description = s.description;
 
     const docRef = await addDoc(colRef, payload);
     added.push({
       id: docRef.id,
-      title: payload.title,
-      url: payload.url,
-      description: payload.description,
-      category: payload.category,
-      icon: payload.icon,
-      active: payload.active,
-      order: payload.order,
-      createdAt: payload.createdAt,
+      title: payload.title as string,
+      url: payload.url as string,
+      description: payload.description as string | undefined,
+      category: payload.category as string,
+      icon: payload.icon as string,
+      active: payload.active as boolean,
+      order: payload.order as number,
+      createdAt: payload.createdAt as string,
+      updatedAt: payload.updatedAt as string,
     });
   }
 

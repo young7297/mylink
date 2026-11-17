@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
+import { AuthProvider } from "@/lib/authContext";
+import { Toaster } from "@/components/ui/sonner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -10,10 +12,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "마이링크 | 내 손안의 링크 허브",
+  title: "마이페이지 | 내 손안의 링크 허브",
   description: "토스 디자인 시스템(TDS) 스타일로 정돈된 심플하고 직관적인 개인 링크 모음 서비스예요.",
   openGraph: {
-    title: "마이링크 | 내 손안의 링크 허브",
+    title: "마이페이지 | 내 손안의 링크 허브",
     description: "토스 블루와 깔끔한 화이트 카드 인터페이스의 링크 허브예요.",
     type: "website",
     locale: "ko_KR",
@@ -39,8 +41,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#f2f4f6] text-[#191f28]">
-        <FirebaseAnalytics />
-        {children}
+        <AuthProvider>
+          <FirebaseAnalytics />
+          <Toaster />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

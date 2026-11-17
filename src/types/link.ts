@@ -12,12 +12,18 @@ export interface LinkItem {
 }
 
 export interface UserProfile {
+  uid?: string;
   name: string;
+  email?: string;
   bio: string;
   avatarUrl?: string;
   avatarBase64?: string;
   jobTitle?: string;
   location?: string;
+  firestorePath?: string;
+  isGoogleAuth?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ThemeConfig {

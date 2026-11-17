@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 import { cn } from "@/lib/utils";
 
 export interface SwitchProps {
@@ -20,49 +21,35 @@ function Switch({
   className,
   id,
 }: SwitchProps) {
-  const handleClick = () => {
-    if (disabled) return;
-    onCheckedChange(!checked);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onCheckedChange(!checked);
-    }
-  };
-
   return (
     <div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
-      <button
+      <SwitchPrimitive.Root
         id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
+        checked={checked}
+        onCheckedChange={(nextChecked) => onCheckedChange(nextChecked)}
         disabled={disabled}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
+        data-slot="switch"
         className={cn(
-          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out",
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-[#3182f6]/25",
           checked ? "bg-[#3182f6]" : "bg-[#d1d6db]",
           disabled && "cursor-not-allowed opacity-40"
         )}
       >
-        <span
+        <SwitchPrimitive.Thumb
+          data-slot="switch-thumb"
           className={cn(
-            "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out",
+            "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out",
             checked ? "translate-x-5" : "translate-x-0"
           )}
         />
-      </button>
+      </SwitchPrimitive.Root>
 
       {label && (
         <span
-          onClick={handleClick}
+          onClick={() => !disabled && onCheckedChange(!checked)}
           className={cn(
-            "text-[13px] font-medium text-[#4e5968] cursor-pointer hover:text-[#191f28] transition-colors",
-            disabled && "cursor-not-allowed opacity-40"
+            "text-xs font-medium cursor-pointer text-[#6b7684] hover:text-[#191f28] transition-colors",
+            disabled && "cursor-not-allowed text-[#b0b8c1]"
           )}
         >
           {label}
