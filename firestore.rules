@@ -142,7 +142,18 @@ service cloud.firestore {
              (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
              (!('icon' in data) || (data.icon is string && data.icon.size() <= 50)) &&
              (!('active' in data) || data.active is bool) &&
-             (!('order' in data) || data.order is number);
+             (!('order' in data) || data.order is number) &&
+             (!('clickCount' in data) || data.clickCount is number) &&
+             (!('clicks' in data) || data.clicks is number);
+    }
+
+    // 9. 링크 클릭 카운트 수정 허용 검증 (로그인/비로그인 방문자 누구나 클릭 카운트 수정 가능)
+    function isClickCountUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      // title, url 등 메타데이터 변조를 방지하고 오직 클릭 카운트(clickCount, clicks) 필드만 수정하는 경우 누구나 허용
+      return diff.affectedKeys().hasOnly(['clickCount', 'clicks']) &&
+             (!('clickCount' in request.resource.data) || (request.resource.data.clickCount is number && request.resource.data.clickCount >= 0)) &&
+             (!('clicks' in request.resource.data) || (request.resource.data.clicks is number && request.resource.data.clicks >= 0));
     }
 
     // ========================================================================
@@ -171,10 +182,11 @@ service cloud.firestore {
         // 링크 생성: 본인만 가능 + 링크 유효성 검증
         allow create: if isOwner(userId) && isValidLink(request.resource.data);
 
-        // 링크 수정: 본인만 가능 + 유효성 검증 + 생성 시점(createdAt) 변조 방지
-        allow update: if isOwner(userId) &&
+        // 링크 수정: 본인 전체 수정(유효성 검증 + createdAt 불변) 또는 누구나 clickCount 단독 증가 가능
+        allow update: if (isOwner(userId) &&
                          isValidLink(request.resource.data) &&
-                         createdAtNotModified();
+                         createdAtNotModified()) ||
+                         isClickCountUpdate();
 
         // 링크 삭제: 본인만 가능
         allow delete: if isOwner(userId);
@@ -198,7 +210,8 @@ service cloud.firestore {
 
       match /links/{linkId} {
         allow read: if true;
-        allow create, update: if isOwner(userId) && isValidLink(request.resource.data);
+        allow create: if isOwner(userId) && isValidLink(request.resource.data);
+        allow update: if (isOwner(userId) && isValidLink(request.resource.data)) || isClickCountUpdate();
         allow delete: if isOwner(userId);
       }
 

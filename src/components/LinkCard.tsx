@@ -11,6 +11,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  MousePointerClick,
 } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -630,6 +631,15 @@ export default function LinkCard({
                   준비 중
                 </Badge>
               )}
+
+              {/* 조회수 뱃지 (텍스트 없이 아이콘과 숫자만 표시, 0이어도 항상 표시) */}
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[#4e5968] bg-[#f2f4f6] px-1.5 py-0.2 rounded"
+                title={`조회수 ${(link.clickCount ?? 0).toLocaleString()}`}
+              >
+                <MousePointerClick className="w-3 h-3 text-[#3182f6]" />
+                <span className="tabular-nums">{(link.clickCount ?? 0).toLocaleString()}</span>
+              </span>
             </div>
 
             {/* 제목 (16px 600) */}

@@ -33,6 +33,7 @@ import {
   ShieldCheck,
   Lock,
   Database,
+  MousePointerClick,
 } from "lucide-react";
 
 export function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -268,4 +269,5 @@ export {
   ShieldCheck,
   Lock,
   Database,
+  MousePointerClick,
 };

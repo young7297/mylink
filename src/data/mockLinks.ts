@@ -14,6 +14,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "github",
     active: true,
     order: 0,
+    clickCount: 42,
     createdAt: "2026-11-01T09:00:00Z",
   },
   {
@@ -25,6 +26,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "globe",
     active: true,
     order: 1,
+    clickCount: 128,
     createdAt: "2026-11-03T14:30:00Z",
   },
   {
@@ -36,6 +38,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "book-open",
     active: true,
     order: 2,
+    clickCount: 85,
     createdAt: "2026-11-05T11:20:00Z",
   },
   {
@@ -47,6 +50,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "file-text",
     active: true,
     order: 3,
+    clickCount: 64,
     createdAt: "2026-11-08T18:00:00Z",
   },
   {
@@ -58,6 +62,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "linkedin",
     active: true,
     order: 4,
+    clickCount: 31,
     createdAt: "2026-11-10T10:15:00Z",
   },
   {
@@ -69,6 +74,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "figma",
     active: true,
     order: 5,
+    clickCount: 57,
     createdAt: "2026-11-12T16:40:00Z",
   },
   {
@@ -80,6 +86,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "mail",
     active: true,
     order: 6,
+    clickCount: 19,
     createdAt: "2026-11-13T12:00:00Z",
   },
   {
@@ -91,6 +98,7 @@ export const DUMMY_LINKS: LinkItem[] = [
     icon: "message-circle",
     active: false,
     order: 7,
+    clickCount: 8,
     createdAt: "2026-11-14T08:20:00Z",
   },
 ];

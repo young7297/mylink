@@ -28,6 +28,7 @@ import {
   GoogleIcon,
   User,
   ArrowUpRight,
+  MousePointerClick,
 } from "@/components/icons";
 import {
   addLinkToFirestore,
@@ -36,6 +37,7 @@ import {
   getLinksFromFirestore,
   seedSampleLinksToFirestore,
   getUserByDisplayName,
+  recordLinkClick,
 } from "@/lib/linkService";
 import { useAuth } from "@/lib/authContext";
 import { getEmailPrefix } from "@/lib/utils";
@@ -611,12 +613,46 @@ export default function LinkListHub({
     return data.links.filter((l) => l.active === false).length;
   }, [data]);
 
-  // 링크 클릭 핸들러
+  // 전체 클릭 수 합계 계산
+  const totalClicks = useMemo(() => {
+    if (!data || !data.links) return 0;
+    return data.links.reduce((acc, curr) => acc + (curr.clickCount || 0), 0);
+  }, [data]);
+
+  // 링크 클릭 핸들러 (클릭 카운트 저장 및 새 창 열기)
   const handleLinkOpen = (link: LinkItem) => {
     if (link.active === false) {
       showToast("이 링크는 현재 비활성화되어 있어요");
       return;
     }
+
+    const uid = targetUserId || user?.uid;
+
+    // 1. UI 즉시 낙관적 업데이트 (+1)
+    setData((prev) => {
+      if (!prev) return prev;
+      const updatedLinks = prev.links.map((l) =>
+        l.id === link.id ? { ...l, clickCount: (l.clickCount || 0) + 1 } : l
+      );
+      const updatedData = { ...prev, links: updatedLinks };
+      if (user && user.uid === uid) {
+        try {
+          localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
+      }
+      return updatedData;
+    });
+
+    // 2. Firestore 클릭 카운트 영구 저장 (Atomic Increment)
+    if (uid) {
+      recordLinkClick(uid, link.id).catch((err) => {
+        console.warn("Firestore 클릭 카운트 저장 오류:", err);
+      });
+    }
+
+    // 3. 브라우저에서 대상 URL 새 탭으로 열기
     window.open(link.url, "_blank", "noopener,noreferrer");
   };
 
@@ -949,9 +985,16 @@ export default function LinkListHub({
 
                   {/* 상태 및 필터 서머리 라인 */}
                   <div className="flex items-center justify-between px-1 text-xs text-[#6b7684]">
-                    <span className="tabular-num">
-                      총 <strong className="text-[#191f28] font-semibold">{filteredLinks.length}</strong>개의 링크가 있어요
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="tabular-num">
+                        총 <strong className="text-[#191f28] font-semibold">{filteredLinks.length}</strong>개의 링크
+                      </span>
+                      <span className="text-[#d1d6db]">·</span>
+                      <span className="inline-flex items-center gap-1 text-[#4e5968]" title={`총 조회수 ${totalClicks.toLocaleString()}`}>
+                        <MousePointerClick className="w-3.5 h-3.5 text-[#3182f6]" />
+                        <strong className="text-[#3182f6] font-semibold tabular-nums">{totalClicks.toLocaleString()}</strong>
+                      </span>
+                    </div>
 
                     {/* 소유자 전용: 비활성 포함 토글 및 빠른 추가 버튼 */}
                     {isOwner && (

@@ -7,6 +7,7 @@ export interface LinkItem {
   icon?: string;
   active?: boolean;
   order?: number;
+  clickCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }

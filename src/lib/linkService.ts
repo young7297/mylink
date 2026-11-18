@@ -8,6 +8,7 @@ import {
   getDocs,
   deleteDoc,
   updateDoc,
+  increment,
   query,
   orderBy,
   where,
@@ -67,6 +68,7 @@ function mapDocToLinkItem(docSnap: QueryDocumentSnapshot<DocumentData>): LinkIte
     icon: data.icon || "link",
     active: data.active !== false,
     order: typeof data.order === "number" ? data.order : 0,
+    clickCount: typeof data.clickCount === "number" ? data.clickCount : (typeof data.clicks === "number" ? data.clicks : 0),
     createdAt: createdAtStr,
     updatedAt: updatedAtStr,
   };
@@ -449,6 +451,7 @@ export async function addLinkToFirestore(
     icon: linkData.icon || "link",
     active: linkData.active !== false,
     order,
+    clickCount: (linkData as { clickCount?: number }).clickCount ?? 0,
     createdAt,
     updatedAt,
   };
@@ -475,6 +478,7 @@ export async function addLinkToFirestore(
     icon: payload.icon as string,
     active: payload.active as boolean,
     order: payload.order as number,
+    clickCount: payload.clickCount as number,
     createdAt: payload.createdAt as string,
     updatedAt: payload.updatedAt as string,
   };
@@ -566,6 +570,7 @@ export async function updateLinkInFirestore(
   if (linkData.icon !== undefined) payload.icon = linkData.icon;
   if (linkData.active !== undefined) payload.active = linkData.active;
   if (linkData.order !== undefined) payload.order = linkData.order;
+  if (linkData.clickCount !== undefined) payload.clickCount = linkData.clickCount;
 
   payload.updatedAt = linkData.updatedAt || new Date().toISOString();
 
@@ -605,6 +610,7 @@ export async function seedSampleLinksToFirestore(
       icon: s.icon || "link",
       active: s.active !== false,
       order: s.order ?? i,
+      clickCount: s.clickCount ?? 0,
       createdAt,
       updatedAt: createdAt,
     };
@@ -626,6 +632,7 @@ export async function seedSampleLinksToFirestore(
       icon: payload.icon as string,
       active: payload.active as boolean,
       order: payload.order as number,
+      clickCount: payload.clickCount as number,
       createdAt: payload.createdAt as string,
       updatedAt: payload.updatedAt as string,
     });
@@ -633,4 +640,29 @@ export async function seedSampleLinksToFirestore(
 
   added.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
   return added;
+}
+
+/**
+ * 링크 클릭 시 Firestore의 clickCount를 1 증가 (Atomic Increment)
+ * - users/{uid}/links/{id} 및 legacy user/{uid}/links/{id} 경로에 반영
+ */
+export async function recordLinkClick(uid: string, id: string): Promise<void> {
+  if (!uid || !id) return;
+  try {
+    const docRef = doc(db, "users", uid, "links", id);
+    await updateDoc(docRef, {
+      clickCount: increment(1),
+    });
+  } catch (error) {
+    console.warn(`users 컬렉션 링크(${id}) 클릭 카운트 저장 실패:`, error);
+  }
+
+  try {
+    const legacyDocRef = doc(db, "user", uid, "links", id);
+    await updateDoc(legacyDocRef, {
+      clickCount: increment(1),
+    });
+  } catch (error) {
+    console.warn(`legacy user 컬렉션 링크(${id}) 클릭 카운트 저장 실패:`, error);
+  }
 }
