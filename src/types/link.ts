@@ -14,6 +14,7 @@ export interface LinkItem {
 export interface UserProfile {
   uid?: string;
   name: string;
+  displayName?: string;
   email?: string;
   bio: string;
   avatarUrl?: string;

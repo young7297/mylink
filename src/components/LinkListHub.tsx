@@ -2,15 +2,19 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { LinkItem, MyLinkData, UserProfile, SocialLinks } from "@/types/link";
 import {
   MOCK_MYLINK_DATA,
   CATEGORY_OPTIONS,
 } from "@/data/mockLinks";
 import ProfileHeader from "@/components/ProfileHeader";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import UserNotFoundView from "@/components/UserNotFoundView";
 import LinkCard from "@/components/LinkCard";
 import AddLinkDialog from "@/components/AddLinkDialog";
 import DeleteLinkDialog from "@/components/DeleteLinkDialog";
+import EditProfileDialog from "@/components/EditProfileDialog";
 import { toast } from "sonner";
 import UnauthenticatedView from "@/components/UnauthenticatedView";
 import { useUpdateProfileMutation } from "@/hooks/useProfile";
@@ -22,7 +26,8 @@ import {
   RotateCcw,
   Loader2,
   GoogleIcon,
-  LogOut,
+  User,
+  ArrowUpRight,
 } from "@/components/icons";
 import {
   addLinkToFirestore,
@@ -30,6 +35,7 @@ import {
   updateLinkInFirestore,
   getLinksFromFirestore,
   seedSampleLinksToFirestore,
+  getUserByDisplayName,
 } from "@/lib/linkService";
 import { useAuth } from "@/lib/authContext";
 import { getEmailPrefix } from "@/lib/utils";
@@ -40,13 +46,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface LinkListHubProps {
+  displayName?: string;
   slug?: string;
 }
 
-export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
+export default function LinkListHub({
+  displayName,
+  slug,
+}: LinkListHubProps) {
+  const params = useParams();
+  const routeDisplayName = displayName || (params?.displayName as string) || slug || "";
+
   const {
     user,
     userProfile,
@@ -58,13 +70,26 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   const [data, setData] = useState<MyLinkData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [isNotFound, setIsNotFound] = useState<boolean>(false);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
 
   // 검색 및 필터 상태
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showInactive, setShowInactive] = useState<boolean>(false);
 
-  // Sonner 기반 토스트 알림 헬퍼 (중앙 상단 표시 및 고가독성 텍스트)
+  // 현재 방문자가 이 페이지의 소유자(편집 권한 보유자)인지 여부
+  const isOwner = routeDisplayName
+    ? Boolean(user && targetUserId && user.uid === targetUserId)
+    : Boolean(user);
+
+  const myDisplayName =
+    userProfile?.displayName ||
+    userProfile?.name ||
+    getEmailPrefix(user?.email, "사용자");
+
+  // Sonner 기반 토스트 알림 헬퍼
   const showToast = (
     message: string,
     action?: { label: string; onClick: () => void }
@@ -186,22 +211,25 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 수동 새로고침 핸들러 (Firestore user/{uid}/links에서 최신 링크 다시 조회)
+  // 수동 새로고침 핸들러 (Firestore users/{userId}/links에서 최신 링크 다시 조회)
   const handleRefresh = async () => {
-    if (!user || isRefreshing || isUpdating) return;
+    const uidToFetch = targetUserId || user?.uid;
+    if (!uidToFetch || isRefreshing || isUpdating) return;
 
     try {
       setIsRefreshing(true);
-      setUpdateMessage(`user/${user.uid}/links에서 최신 링크를 불러오고 있어요...`);
-      const firestoreLinks = await getLinksFromFirestore(user.uid);
+      setUpdateMessage(`users/${uidToFetch}/links에서 최신 링크를 불러오고 있어요...`);
+      const firestoreLinks = await getLinksFromFirestore(uidToFetch);
 
       setData((prev) => {
         if (!prev) return prev;
         const updatedData = { ...prev, links: firestoreLinks };
-        try {
-          localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
-        } catch (e) {
-          console.warn("localStorage save error:", e);
+        if (user && user.uid === uidToFetch) {
+          try {
+            localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
+          } catch (e) {
+            console.warn("localStorage save error:", e);
+          }
         }
         return updatedData;
       });
@@ -217,7 +245,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // Firestore 연동 링크 추가 핸들러 (경로: user/{user.uid}/links)
+  // Firestore 연동 링크 추가 핸들러 (경로: users/{user.uid}/links)
   const handleAddLink = async (
     newLinkData: Omit<LinkItem, "id" | "order" | "createdAt">
   ) => {
@@ -228,9 +256,9 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`user/${user.uid}/links에 새 링크를 저장하고 있어요...`);
+      setUpdateMessage(`users/${user.uid}/links에 새 링크를 저장하고 있어요...`);
 
-      // 1. Firestore user/{user.uid}/links 컬렉션에 추가
+      // 1. Firestore users/{user.uid}/links 컬렉션에 추가
       const savedLink = await addLinkToFirestore(user.uid, newLinkData, 0);
 
       // 2. 화면 목록 즉시 갱신 (createdAt 기준 최신순 정렬)
@@ -272,15 +300,15 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     setIsDeleteDialogOpen(true);
   };
 
-  // 삭제 확인 모달에서 [삭제하기] 클릭 시 실행 (Firestore user/{user.uid}/links 연동)
+  // 삭제 확인 모달에서 [삭제하기] 클릭 시 실행 (Firestore users/{user.uid}/links 연동)
   const handleConfirmDelete = async (linkToDelete: LinkItem) => {
     if (!user) return;
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`user/${user.uid}/links에서 링크를 삭제하고 있어요...`);
+      setUpdateMessage(`users/${user.uid}/links에서 링크를 삭제하고 있어요...`);
 
-      // 1. Firestore user/{user.uid}/links 경로에서 문서 삭제
+      // 1. Firestore users/{user.uid}/links 경로에서 문서 삭제
       await deleteLinkFromFirestore(user.uid, linkToDelete.id);
 
       // 2. 화면 목록 즉시 갱신
@@ -309,7 +337,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 링크 인라인 수정 핸들러 (Firestore user/{user.uid}/links 연동)
+  // 링크 인라인 수정 핸들러 (Firestore users/{user.uid}/links 연동)
   const handleUpdateLink = async (
     id: string,
     updatedFields: Partial<Omit<LinkItem, "id">>
@@ -318,7 +346,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`user/${user.uid}/links에 수정 내용을 저장하고 있어요...`);
+      setUpdateMessage(`users/${user.uid}/links에 수정 내용을 저장하고 있어요...`);
 
       const updatedAt = new Date().toISOString();
       const updatedWithTimestamp = {
@@ -326,7 +354,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         updatedAt,
       };
 
-      // 1. Firestore user/{user.uid}/links 경로의 문서 업데이트 (updatedAt 포함)
+      // 1. Firestore users/{user.uid}/links 경로의 문서 업데이트 (updatedAt 포함)
       await updateLinkInFirestore(user.uid, id, updatedWithTimestamp);
 
       // 2. 화면 목록 즉시 갱신
@@ -358,14 +386,14 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 샘플 링크 일괄 등록 핸들러 (Firestore user/{user.uid}/links에 저장)
+  // 샘플 링크 일괄 등록 핸들러 (Firestore users/{user.uid}/links에 저장)
   const handleSeedSampleLinks = async () => {
     if (!user) return;
 
     try {
       setIsSeeding(true);
       setIsUpdating(true);
-      setUpdateMessage(`user/${user.uid}/links에 샘플 링크를 등록하고 있어요...`);
+      setUpdateMessage(`users/${user.uid}/links에 샘플 링크를 등록하고 있어요...`);
 
       const seeded = await seedSampleLinksToFirestore(user.uid, MOCK_MYLINK_DATA.links);
       setData((prev) => {
@@ -384,7 +412,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 프로필 정보 수정 핸들러 (Firestore user/{uid} 연동)
+  // 프로필 정보 수정 핸들러 (Firestore users/{uid} 연동)
   const handleUpdateProfile = async (
     updatedProfileFields: Partial<UserProfile>,
     updatedSocialsFields?: Partial<SocialLinks>
@@ -413,7 +441,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`user/${user.uid}에 변경된 프로필을 저장하고 있어요...`);
+      setUpdateMessage(`users/${user.uid}에 변경된 프로필을 저장하고 있어요...`);
 
       // TanStack Query Mutation 실행 -> onMutate에서 0ms 낙관적 업데이트 즉시 반영
       await updateProfileMutation.mutateAsync({
@@ -435,56 +463,104 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     }
   };
 
-  // 데이터 로딩 (로그인한 유저의 Firestore user/{uid}/links에서 링크 목록 조회)
+  // 데이터 로딩 (displayName 동적 조회 또는 로그인한 유저의 Firestore users/{uid}/links 조회)
   useEffect(() => {
     let isMounted = true;
 
-    if (!user) {
-      queueMicrotask(() => {
-        if (isMounted) {
-          setData(null);
-          setIsLoading(false);
-        }
-      });
-      return;
-    }
-
     async function loadData() {
-      setIsLoading(true);
+      // Case 1: routeDisplayName 이 존재하는 경우 (/[displayName] 동적 라우팅 페이지)
+      if (routeDisplayName) {
+        setIsLoading(true);
+        setIsNotFound(false);
+        try {
+          const targetName = decodeURIComponent(routeDisplayName).trim();
+          // 1. displayName으로 userId 검색 (Firestore where 쿼리)
+          const result = await getUserByDisplayName(targetName);
 
+          if (!isMounted) return;
+
+          if (!result) {
+            // username 없으면 404 페이지로 전환
+            setIsNotFound(true);
+            setData(null);
+            setIsLoading(false);
+            return;
+          }
+
+          setTargetUserId(result.userId);
+
+          // 2. 링크 조회: users/{userId}/links
+          const firestoreLinks = await getLinksFromFirestore(result.userId);
+          if (!isMounted) return;
+
+          setData({
+            slug: targetName,
+            profile: result.profile,
+            theme: MOCK_MYLINK_DATA.theme,
+            socials: result.socials || {
+              ...MOCK_MYLINK_DATA.socials,
+              email: result.profile.email || "",
+            },
+            links: firestoreLinks,
+          });
+          setIsNotFound(false);
+        } catch (err) {
+          console.error("Firestore 유저 및 링크 조회 실패:", err);
+          if (isMounted) setIsNotFound(true);
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
+        return;
+      }
+
+      // Case 2: routeDisplayName 이 없는 경우 (메인 / 페이지)
+      if (!user) {
+        queueMicrotask(() => {
+          if (isMounted) {
+            setData(null);
+            setIsNotFound(false);
+            setIsLoading(false);
+          }
+        });
+        return;
+      }
+
+      setIsLoading(true);
       try {
-        const firestoreLinks = await getLinksFromFirestore(user!.uid);
+        setTargetUserId(user.uid);
+        // 로그인한 본인의 users/{user.uid}/links 조회
+        const firestoreLinks = await getLinksFromFirestore(user.uid);
 
         if (isMounted) {
           const profileToUse: UserProfile = userProfile || {
-            uid: user!.uid,
-            name: getEmailPrefix(user!.email, "Google 사용자"),
-            email: user!.email || "",
-            avatarUrl: user!.photoURL || "/profile.png",
+            uid: user.uid,
+            name: getEmailPrefix(user.email, "Google 사용자"),
+            displayName: getEmailPrefix(user.email, "Google 사용자"),
+            email: user.email || "",
+            avatarUrl: user.photoURL || "/profile.png",
             bio: "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
             jobTitle: "마이페이지 멤버",
             location: "대한민국",
-            firestorePath: `user/${user!.uid}/links`,
+            firestorePath: `users/${user.uid}/links`,
             isGoogleAuth: true,
           };
 
           setData({
-            slug: user!.uid.slice(0, 8),
+            slug: userProfile?.displayName || userProfile?.name || user.uid.slice(0, 8),
             profile: profileToUse,
             theme: MOCK_MYLINK_DATA.theme,
             socials: {
               ...MOCK_MYLINK_DATA.socials,
-              email: user!.email || MOCK_MYLINK_DATA.socials.email,
+              email: user.email || MOCK_MYLINK_DATA.socials.email,
             },
             links: firestoreLinks,
           });
-          setIsLoading(false);
+          setIsNotFound(false);
         }
       } catch (err) {
         console.error("Firestore 유저 링크 로딩 실패:", err);
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
 
@@ -493,15 +569,19 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     return () => {
       isMounted = false;
     };
-  }, [user, userProfile]);
+  }, [routeDisplayName, user, userProfile]);
 
   // 필터링된 링크 목록
   const filteredLinks = useMemo(() => {
     if (!data || !data.links) return [];
 
     return data.links.filter((link) => {
-      // 1. 활성/비활성 필터 (기본은 활성 링크만 표시, showInactive 켜면 비활성도 포함)
-      if (!showInactive && link.active === false) {
+      // 1. 활성/비활성 필터: 방문자(!isOwner)는 항상 활성화된 링크만 노출
+      if (!isOwner && link.active === false) {
+        return false;
+      }
+      // 소유자인 경우 showInactive 토글 스위치 설정 따름
+      if (isOwner && !showInactive && link.active === false) {
         return false;
       }
 
@@ -518,34 +598,38 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
         const titleMatch = link.title.toLowerCase().includes(q);
         const descMatch = (link.description || "").toLowerCase().includes(q);
         const urlMatch = link.url.toLowerCase().includes(q);
-        const catMatch = (link.category || "").toLowerCase().includes(q);
-
-        if (!titleMatch && !descMatch && !urlMatch && !catMatch) {
-          return false;
-        }
+        return titleMatch || descMatch || urlMatch;
       }
 
       return true;
     });
-  }, [data, selectedCategory, searchQuery, showInactive]);
+  }, [data, showInactive, selectedCategory, searchQuery, isOwner]);
 
-  // 비활성화된 항목 총 개수 카운트
+  // 비활성화 링크 개수 계산 (소유자용)
   const inactiveCount = useMemo(() => {
     if (!data || !data.links) return 0;
     return data.links.filter((l) => l.active === false).length;
   }, [data]);
 
+  // 링크 클릭 핸들러
   const handleLinkOpen = (link: LinkItem) => {
-    showToast(`${link.title} 링크로 이동해요`);
-    setTimeout(() => {
-      window.open(link.url, "_blank", "noopener,noreferrer");
-    }, 200);
+    if (link.active === false) {
+      showToast("이 링크는 현재 비활성화되어 있어요");
+      return;
+    }
+    window.open(link.url, "_blank", "noopener,noreferrer");
   };
 
+  // 하단 공유 버튼 클릭 핸들러
   const handleShareBottomCTA = async () => {
-    const shareSlug = user ? user.uid.slice(0, 8) : slug;
-    const url = typeof window !== "undefined" ? window.location.href : `https://young7297.github.io/mylink/${shareSlug}`;
-    const name = data?.profile.name || getEmailPrefix(user?.email, "마이페이지");
+    if (!data) return;
+    const name = data.profile.name || "마이페이지";
+    const currentSlug = routeDisplayName || data.slug || "mylink";
+    const url =
+      typeof window !== "undefined"
+        ? window.location.href
+        : `https://young7297.github.io/mylink/${encodeURIComponent(currentSlug)}`;
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -581,11 +665,69 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     );
   }
 
+  // 2. 일치하는 username이 없는 경우: 404 페이지 렌더링
+  if (isNotFound) {
+    return (
+      <main className="min-h-screen w-full flex flex-col items-center justify-start pb-28 bg-[#f2f4f6] font-sans">
+        {/* 상단 내비게이션 바 */}
+        <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70 relative">
+          <div className="max-w-[520px] mx-auto h-14 px-4 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 text-[#191f28] font-bold text-lg hover:text-[#3182f6] transition-colors">
+              <span className="w-7 h-7 rounded-xl bg-[#3182f6] text-white flex items-center justify-center text-xs font-black shadow-sm">
+                M
+              </span>
+              <span>마이페이지</span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              {!user ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoggingIn}
+                  className="gap-2 font-semibold text-xs h-8 px-3 border-[#d1d6db] hover:border-[#b0b8c1] hover:bg-white text-[#191f28] shadow-2xs cursor-pointer"
+                  title="Google 계정으로 로그인"
+                >
+                  <GoogleIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{isLoggingIn ? "로그인 중..." : "Google 로그인"}</span>
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Link
+                    href={`/${encodeURIComponent(myDisplayName)}`}
+                    className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+                    title={`${myDisplayName}님의 개인 페이지로 이동`}
+                  >
+                    <User className="w-3.5 h-3.5 text-white shrink-0" />
+                    <span className="hidden sm:inline">내 페이지 바로가기</span>
+                    <span className="sm:hidden">내 페이지</span>
+                    <ArrowUpRight className="w-3 h-3 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+                  </Link>
+
+                  <ProfileDropdown
+                    user={user}
+                    userProfile={userProfile}
+                    onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                    onLogout={handleLogout}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* 404 알림 뷰 */}
+        <UserNotFoundView displayName={routeDisplayName} />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen w-full flex flex-col items-center justify-start pb-28 bg-[#f2f4f6] font-sans">
       
       {/* ========================================================= */}
-      {/* 1. 상단 내비게이션 바 (헤더에 구글 소셜 로그인 기능 연동)  */}
+      {/* 1. 상단 내비게이션 바 (개인별 페이지 이동 및 프로필 드롭다운) */}
       {/* ========================================================= */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#f2f4f6]/90 border-b border-[#e5e8eb]/70 relative">
         <div className="max-w-[520px] mx-auto h-14 px-4 flex items-center justify-between">
@@ -611,61 +753,63 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                 <span>{isLoggingIn ? "로그인 중..." : "Google 로그인"}</span>
               </Button>
             ) : (
-              /* 로그인 된 상태: 유저 아바타/이름, 새로고침, 링크 추가, 로그아웃 버튼 */
+              /* 로그인 된 상태: 헤더 개인별 페이지 이동 버튼, 프로필 드롭다운, 링크 추가 */
               <div className="flex items-center gap-1.5 sm:gap-2">
-                {/* 사용자 정보 미니 뱃지 (이메일 앞부분 display name) */}
-                <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-full border border-[#e5e8eb] shadow-2xs max-w-[120px] sm:max-w-[160px]">
-                  <Avatar size="sm" className="w-5 h-5 shrink-0 border-0">
-                    <AvatarImage
-                      src={userProfile?.avatarUrl || user.photoURL || "/profile.png"}
-                      alt={userProfile?.name || getEmailPrefix(user.email, "User")}
-                    />
-                    <AvatarFallback className="text-[10px]">
-                      {(userProfile?.name || getEmailPrefix(user.email, "U"))[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-[#191f28] font-semibold truncate hidden xs:inline">
-                    {userProfile?.name || getEmailPrefix(user.email, "사용자")}
-                  </span>
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing || isUpdating}
-                  className="gap-1 font-medium text-xs text-[#4e5968] h-8 px-2 sm:px-2.5"
-                  title={`user/${user.uid}/links 새로고침`}
+                {/* 1) 헤더 내 페이지 바로가기 버튼 (Primary 디자인) */}
+                <Link
+                  href={`/${encodeURIComponent(myDisplayName)}`}
+                  className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+                  title={`${myDisplayName}님의 개인 페이지로 이동`}
                 >
-                  <RotateCcw
-                    className={`w-3.5 h-3.5 ${
-                      isRefreshing ? "animate-spin text-[#3182f6]" : ""
-                    }`}
-                  />
-                  <span className="hidden md:inline">새로고침</span>
-                </Button>
+                  <User className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span className="hidden sm:inline">내 페이지 바로가기</span>
+                  <span className="sm:hidden">내 페이지</span>
+                  <ArrowUpRight className="w-3 h-3 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+                </Link>
 
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setIsAddDialogOpen(true)}
-                  className="gap-1 shadow-sm font-semibold h-8 px-2.5 sm:px-3 text-xs"
-                  disabled={isUpdating}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>링크 추가</span>
-                </Button>
+                {/* 2) 프로필 드롭다운 (개인별 페이지 이동 및 프로필 설정 메뉴) */}
+                <ProfileDropdown
+                  user={user}
+                  userProfile={userProfile}
+                  onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                  onRefresh={isOwner ? handleRefresh : undefined}
+                  onAddLink={isOwner ? () => setIsAddDialogOpen(true) : undefined}
+                  onLogout={handleLogout}
+                  isRefreshing={isRefreshing}
+                  isUpdating={isUpdating}
+                />
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="gap-1 text-xs text-[#8b95a1] hover:text-[#f04452] h-8 px-2"
-                  title="로그아웃"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">로그아웃</span>
-                </Button>
+                {/* 소유자 전용: 새로고침 & 링크 추가 바로가기 */}
+                {isOwner && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing || isUpdating}
+                      className="gap-1 font-medium text-xs text-[#4e5968] h-8 px-2 sm:px-2.5 hidden md:flex cursor-pointer"
+                      title={`users/${targetUserId || user.uid}/links 새로고침`}
+                    >
+                      <RotateCcw
+                        className={`w-3.5 h-3.5 ${
+                          isRefreshing ? "animate-spin text-[#3182f6]" : ""
+                        }`}
+                      />
+                      <span>새로고침</span>
+                    </Button>
+
+                    <Button
+                      variant="weak"
+                      size="sm"
+                      onClick={() => setIsAddDialogOpen(true)}
+                      className="gap-1 shadow-2xs font-semibold h-8 px-2.5 sm:px-3 text-xs hidden sm:flex cursor-pointer border border-[#3182f6]/15"
+                      disabled={isUpdating}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>링크 추가</span>
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -680,12 +824,12 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       </header>
 
       {/* ========================================================= */}
-      {/* 2. 메인 콘텐츠 컨테이너 (로그인 여부에 따른 화면 분기)    */}
+      {/* 2. 메인 콘텐츠 컨테이너 (비로그인 메인 vs 공개/개인화 화면) */}
       {/* ========================================================= */}
       <div className="w-full max-w-[520px] px-4 pt-4 flex flex-col">
         
-        {/* Case A: 로그인을 안 한 경우 -> 설명 문구 및 로그인 유도 화면 */}
-        {!user ? (
+        {/* Case A: 메인 홈(/) 접속 시 비로그인 상태 -> 로그인 유도 화면 */}
+        {!routeDisplayName && !user ? (
           <>
             <UnauthenticatedView
               onLogin={handleGoogleLogin}
@@ -700,7 +844,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                   size="pill"
                   onClick={handleGoogleLogin}
                   disabled={isLoggingIn}
-                  className="w-full shadow-toss-2 gap-2.5"
+                  className="w-full shadow-toss-2 gap-2.5 cursor-pointer"
                 >
                   <GoogleIcon className="w-5 h-5 shrink-0" />
                   <span>{isLoggingIn ? "Google 로그인 중..." : "Google 계정으로 시작하기"}</span>
@@ -717,7 +861,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
             </footer>
           </>
         ) : (
-          /* Case B: 로그인을 한 경우 -> user/{user.uid}/links 개인화 화면 */
+          /* Case B: 개인별 공개 페이지(/[displayName]) 또는 로그인 사용자 화면 */
           <>
             {/* 업데이트/갱신 진행 상태 알림 뱃지 */}
             {(isRefreshing || isUpdating) && (
@@ -739,23 +883,25 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                     <span className="w-3 h-3 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
                   <p className="text-sm font-semibold text-[#191f28]">
-                    개인화 링크를 불러오고 있어요
+                    {routeDisplayName
+                      ? `‘${routeDisplayName}’ 님의 링크를 불러오고 있어요`
+                      : "개인화 링크를 불러오고 있어요"}
                   </p>
                   <code className="text-xs text-[#3182f6] font-mono bg-[#e8f3ff] px-2 py-0.5 rounded">
-                    user/{user.uid}/links
+                    users/{targetUserId || user?.uid || "..."}/links
                   </code>
                 </div>
               </Card>
             ) : (
               <>
-                {/* 프로필 헤더 (로그인한 유저 정보 및 user/{user.uid}/links 경로 표시) */}
+                {/* 프로필 헤더 (사용자 정보 및 공유 기능) */}
                 <ProfileHeader
                   profile={data.profile}
                   socials={data.socials}
-                  slug={data.slug}
+                  slug={routeDisplayName || data.slug}
                   onShowToast={showToast}
-                  onUpdateProfile={handleUpdateProfile}
-                  isEditable={Boolean(user)}
+                  onUpdateProfile={isOwner ? handleUpdateProfile : undefined}
+                  isEditable={isOwner}
                 />
 
                 {/* ======================================================= */}
@@ -807,32 +953,35 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                       총 <strong className="text-[#191f28] font-semibold">{filteredLinks.length}</strong>개의 링크가 있어요
                     </span>
 
-                    <div className="flex items-center gap-2">
-                      {inactiveCount > 0 && (
-                        <Switch
-                          checked={showInactive}
-                          onCheckedChange={(nextState) => {
-                            setShowInactive(nextState);
-                            showToast(
-                              nextState
-                                ? "비활성화된 링크를 포함하여 표시해요"
-                                : "활성화된 링크만 표시해요"
-                            );
-                          }}
-                          label={`비활성 포함 (${inactiveCount})`}
-                        />
-                      )}
+                    {/* 소유자 전용: 비활성 포함 토글 및 빠른 추가 버튼 */}
+                    {isOwner && (
+                      <div className="flex items-center gap-2">
+                        {inactiveCount > 0 && (
+                          <Switch
+                            checked={showInactive}
+                            onCheckedChange={(nextState) => {
+                              setShowInactive(nextState);
+                              showToast(
+                                nextState
+                                  ? "비활성화된 링크를 포함하여 표시해요"
+                                  : "활성화된 링크만 표시해요"
+                              );
+                            }}
+                            label={`비활성 포함 (${inactiveCount})`}
+                          />
+                        )}
 
-                      <Button
-                        variant="weak"
-                        size="sm"
-                        onClick={() => setIsAddDialogOpen(true)}
-                        className="gap-1 text-[12px] h-7 px-2.5 font-semibold"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>추가</span>
-                      </Button>
-                    </div>
+                        <Button
+                          variant="weak"
+                          size="sm"
+                          onClick={() => setIsAddDialogOpen(true)}
+                          className="gap-1 text-[12px] h-7 px-2.5 font-semibold cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>추가</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -854,8 +1003,8 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                           index={idx}
                           existingLinks={data?.links}
                           onOpenLink={handleLinkOpen}
-                          onDeleteLink={handleRequestDelete}
-                          onUpdateLink={handleUpdateLink}
+                          onDeleteLink={isOwner ? handleRequestDelete : undefined}
+                          onUpdateLink={isOwner ? handleUpdateLink : undefined}
                         />
                       ))}
                     </Card>
@@ -873,42 +1022,48 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                       <p className="text-sm text-[#6b7684] mb-4">
                         {searchQuery.trim() || selectedCategory !== "all"
                           ? "검색어 또는 카테고리 필터를 초기화해 보세요."
-                          : "첫 번째 링크를 직접 추가하거나 샘플 링크 8개를 불러와 보세요."}
+                          : isOwner
+                          ? "첫 번째 링크를 직접 추가하거나 샘플 링크를 불러와 보세요."
+                          : "해당 사용자가 등록한 활성화 링크가 없어요."}
                       </p>
-                      <div className="flex items-center justify-center gap-2 flex-wrap">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => setIsAddDialogOpen(true)}
-                          className="gap-1.5"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>새 링크 추가하기</span>
-                        </Button>
-                        {searchQuery.trim() || selectedCategory !== "all" ? (
+
+                      {isOwner && (
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
                           <Button
-                            variant="secondary"
+                            variant="primary"
                             size="sm"
-                            onClick={() => {
-                              setSelectedCategory("all");
-                              setSearchQuery("");
-                              setShowInactive(true);
-                            }}
+                            onClick={() => setIsAddDialogOpen(true)}
+                            className="gap-1.5 cursor-pointer"
                           >
-                            필터 초기화하기
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>새 링크 추가하기</span>
                           </Button>
-                        ) : (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleSeedSampleLinks}
-                            disabled={isSeeding}
-                            className="gap-1.5"
-                          >
-                            <span>{isSeeding ? "샘플 등록 중..." : "샘플 링크 불러오기"}</span>
-                          </Button>
-                        )}
-                      </div>
+                          {searchQuery.trim() || selectedCategory !== "all" ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCategory("all");
+                                setSearchQuery("");
+                                setShowInactive(true);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              필터 초기화하기
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={handleSeedSampleLinks}
+                              disabled={isSeeding}
+                              className="gap-1.5 cursor-pointer"
+                            >
+                              <span>{isSeeding ? "샘플 등록 중..." : "샘플 링크 불러오기"}</span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </Card>
                   )}
                 </section>
@@ -917,12 +1072,12 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                 <footer className="mt-8 text-center text-xs text-[#8b95a1] space-y-1">
                   <p>© 2026 마이페이지 · {data.profile.name}</p>
                   <p className="text-[11px] text-[#b0b8c1]">
-                    Firestore 경로: user/{user.uid}/links · 토스 디자인 시스템(TDS) 준수
+                    Firestore 경로: users/{targetUserId || user?.uid || "..."}/links · 토스 디자인 시스템(TDS) 준수
                   </p>
                 </footer>
 
                 {/* ========================================================= */}
-                {/* 5. 하단 고정 CTA (로그인 상태용: 프로필 공유하기)         */}
+                {/* 5. 하단 고정 CTA (프로필 공유하기)                        */}
                 {/* ========================================================= */}
                 <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
                   <div className="w-full max-w-[520px] mx-auto px-4 pb-5 pt-6 bottom-cta-protection pointer-events-auto">
@@ -930,29 +1085,49 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                       variant="primary"
                       size="pill"
                       onClick={handleShareBottomCTA}
-                      className="w-full shadow-toss-2"
+                      className="w-full shadow-toss-2 cursor-pointer"
                     >
                       <Share2 className="w-5 h-5" />
-                      <span>내 마이페이지 공유하기</span>
+                      <span>
+                        {isOwner
+                          ? "내 마이페이지 공유하기"
+                          : `${data.profile.name}님의 페이지 공유하기`}
+                      </span>
                     </Button>
                   </div>
                 </div>
 
-                {/* 링크 추가 다이얼로그 (Firestore user/{user.uid}/links 연동) */}
-                <AddLinkDialog
-                  open={isAddDialogOpen}
-                  onOpenChange={setIsAddDialogOpen}
-                  onAddLink={handleAddLink}
-                  existingLinks={data?.links}
-                />
+                {/* 소유자 전용: 링크 추가 다이얼로그 (Firestore users/{user.uid}/links 연동) */}
+                {isOwner && (
+                  <AddLinkDialog
+                    open={isAddDialogOpen}
+                    onOpenChange={setIsAddDialogOpen}
+                    onAddLink={handleAddLink}
+                    existingLinks={data?.links}
+                  />
+                )}
 
-                {/* 링크 삭제 확인 모달 (Firestore user/{user.uid}/links 연동) */}
-                <DeleteLinkDialog
-                  open={isDeleteDialogOpen}
-                  onOpenChange={setIsDeleteDialogOpen}
-                  link={deleteModalLink}
-                  onConfirmDelete={handleConfirmDelete}
-                />
+                {/* 소유자 전용: 링크 삭제 확인 모달 (Firestore users/{user.uid}/links 연동) */}
+                {isOwner && (
+                  <DeleteLinkDialog
+                    open={isDeleteDialogOpen}
+                    onOpenChange={setIsDeleteDialogOpen}
+                    link={deleteModalLink}
+                    onConfirmDelete={handleConfirmDelete}
+                  />
+                )}
+
+                {/* 프로필 드롭다운 등에서 트리거되는 프로필 수정 다이얼로그 */}
+                {user && (
+                  <EditProfileDialog
+                    open={isEditProfileOpen}
+                    onOpenChange={setIsEditProfileOpen}
+                    profile={userProfile || data.profile}
+                    socials={data.socials}
+                    currentUid={user.uid}
+                    onSaveProfile={handleUpdateProfile}
+                  />
+                )}
               </>
             )}
           </>

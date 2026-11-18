@@ -5,16 +5,21 @@ import LinkListHub from "@/components/LinkListHub";
  */
 export function generateStaticParams() {
   return [
-    { slug: "dayoung" },
-    { slug: "links" },
+    { displayName: "dayoung" },
+    { displayName: "links" },
   ];
 }
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ displayName: string }>;
 }
 
 export default async function Page({ params }: PageProps) {
   const resolvedParams = await params;
-  return <LinkListHub slug={resolvedParams.slug} />;
+  return (
+    <LinkListHub
+      displayName={resolvedParams.displayName}
+      slug={resolvedParams.displayName}
+    />
+  );
 }
