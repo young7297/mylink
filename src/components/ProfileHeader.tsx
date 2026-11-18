@@ -13,7 +13,9 @@ import {
   Copy,
   Check,
   Database,
+  Pencil,
 } from "@/components/icons";
+import EditProfileDialog from "@/components/EditProfileDialog";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,11 @@ interface ProfileHeaderProps {
   socials: SocialLinks;
   slug: string;
   onShowToast: (message: string) => void;
+  onUpdateProfile?: (
+    updatedProfile: Partial<UserProfile>,
+    updatedSocials?: Partial<SocialLinks>
+  ) => Promise<void>;
+  isEditable?: boolean;
 }
 
 export default function ProfileHeader({
@@ -31,8 +38,11 @@ export default function ProfileHeader({
   socials,
   slug,
   onShowToast,
+  onUpdateProfile,
+  isEditable = true,
 }: ProfileHeaderProps) {
   const [copied, setCopied] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleCopyUrl = async () => {
     const url = typeof window !== "undefined" ? window.location.href : `https://young7297.github.io/mylink/${slug}`;
@@ -97,8 +107,21 @@ export default function ProfileHeader({
           </span>
         </div>
 
-        {/* 우측 액션: 링크 복사 & 공유 */}
+        {/* 우측 액션: 프로필 수정, 링크 복사 & 공유 */}
         <div className="flex items-center gap-1.5">
+          {isEditable && onUpdateProfile && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditDialogOpen(true)}
+              className="gap-1 font-semibold text-xs border-[#d1d6db] hover:border-[#3182f6] hover:bg-[#e8f3ff] text-[#3182f6]"
+              title="프로필 수정"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>프로필 수정</span>
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             size="sm"
@@ -142,6 +165,17 @@ export default function ProfileHeader({
               <Badge variant="grey" size="xs">
                 {profile.jobTitle}
               </Badge>
+            )}
+            {isEditable && onUpdateProfile && (
+              <button
+                type="button"
+                onClick={() => setIsEditDialogOpen(true)}
+                className="p-1 rounded-full text-[#8b95a1] hover:text-[#3182f6] hover:bg-[#e8f3ff] transition-colors cursor-pointer"
+                title="프로필 수정"
+                aria-label="프로필 정보 수정하기"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
 
@@ -259,6 +293,18 @@ export default function ProfileHeader({
           </Button>
         )}
       </div>
+
+      {/* 프로필 수정 모달 다이얼로그 */}
+      {isEditable && onUpdateProfile && (
+        <EditProfileDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          profile={profile}
+          socials={socials}
+          currentUid={profile.uid}
+          onSaveProfile={onUpdateProfile}
+        />
+      )}
     </Card>
   );
 }

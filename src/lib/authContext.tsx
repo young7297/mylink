@@ -9,10 +9,11 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { UserProfile } from "@/types/link";
+import { UserProfile, SocialLinks } from "@/types/link";
 import {
   getUserProfileFromFirestore,
   syncUserProfileToFirestore,
+  updateUserProfileInFirestore,
 } from "@/lib/linkService";
 import { getEmailPrefix } from "@/lib/utils";
 
@@ -23,6 +24,16 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<User | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfile: (
+    profileData: {
+      name: string;
+      bio?: string;
+      jobTitle?: string;
+      location?: string;
+      avatarUrl?: string;
+    },
+    socialsData?: Partial<SocialLinks>
+  ) => Promise<UserProfile>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,6 +139,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (
+    profileData: {
+      name: string;
+      bio?: string;
+      jobTitle?: string;
+      location?: string;
+      avatarUrl?: string;
+    },
+    socialsData?: Partial<SocialLinks>
+  ): Promise<UserProfile> => {
+    if (!user) throw new Error("로그인이 필요합니다.");
+    const updated = await updateUserProfileInFirestore(user.uid, profileData, socialsData);
+    setUserProfile(updated);
+    return updated;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -137,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithGoogle,
         signOut,
         refreshProfile,
+        updateProfile,
       }}
     >
       {children}

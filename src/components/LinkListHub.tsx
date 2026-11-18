@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { LinkItem, MyLinkData, UserProfile } from "@/types/link";
+import { LinkItem, MyLinkData, UserProfile, SocialLinks } from "@/types/link";
 import {
   MOCK_MYLINK_DATA,
   CATEGORY_OPTIONS,
@@ -52,6 +52,7 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     isLoading: isAuthLoading,
     signInWithGoogle,
     signOut,
+    updateProfile,
   } = useAuth();
 
   const [data, setData] = useState<MyLinkData | null>(null);
@@ -317,6 +318,82 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       showToast("샘플 등록 실패: " + (err?.message || "다시 시도해 주세요"));
     } finally {
       setIsSeeding(false);
+      setIsUpdating(false);
+      setUpdateMessage("");
+    }
+  };
+
+  // 프로필 정보 수정 핸들러 (Firestore user/{uid} 연동)
+  const handleUpdateProfile = async (
+    updatedProfileFields: Partial<UserProfile>,
+    updatedSocialsFields?: Partial<SocialLinks>
+  ) => {
+    if (!user || !data) return;
+
+    // 변경된 사항이 전혀 없는 경우 불필요한 Firestore 업데이트 생략
+    const isProfileUnchanged =
+      (!updatedProfileFields.name || updatedProfileFields.name.trim() === (data.profile.name || "").trim()) &&
+      (updatedProfileFields.bio === undefined || updatedProfileFields.bio.trim() === (data.profile.bio || "").trim()) &&
+      (updatedProfileFields.jobTitle === undefined || updatedProfileFields.jobTitle.trim() === (data.profile.jobTitle || "").trim()) &&
+      (updatedProfileFields.location === undefined || updatedProfileFields.location.trim() === (data.profile.location || "").trim()) &&
+      (updatedProfileFields.avatarUrl === undefined || (updatedProfileFields.avatarUrl.trim() || "/profile.png") === (data.profile.avatarUrl || "/profile.png"));
+
+    const isSocialsUnchanged =
+      !updatedSocialsFields ||
+      ((updatedSocialsFields.github ?? "").trim() === (data.socials.github ?? "").trim() &&
+        (updatedSocialsFields.blog ?? "").trim() === (data.socials.blog ?? "").trim() &&
+        (updatedSocialsFields.linkedin ?? "").trim() === (data.socials.linkedin ?? "").trim() &&
+        (updatedSocialsFields.instagram ?? "").trim() === (data.socials.instagram ?? "").trim());
+
+    if (isProfileUnchanged && isSocialsUnchanged) {
+      showToast("변경된 사항이 없어 업데이트하지 않았어요.");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setUpdateMessage(`user/${user.uid}에 변경된 프로필을 저장하고 있어요...`);
+
+      const savedProfile = await updateProfile(
+        {
+          name: updatedProfileFields.name || data?.profile.name || "사용자",
+          bio: updatedProfileFields.bio,
+          jobTitle: updatedProfileFields.jobTitle,
+          location: updatedProfileFields.location,
+          avatarUrl: updatedProfileFields.avatarUrl,
+        },
+        updatedSocialsFields
+      );
+
+      // 로컬 data 상태 및 localStorage 즉시 동기화
+      setData((prev) => {
+        if (!prev) return prev;
+        const newSocials = updatedSocialsFields
+          ? { ...prev.socials, ...updatedSocialsFields }
+          : prev.socials;
+
+        const updatedData: MyLinkData = {
+          ...prev,
+          profile: savedProfile,
+          socials: newSocials,
+        };
+
+        try {
+          localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
+        } catch (e) {
+          console.warn("localStorage save error:", e);
+        }
+
+        return updatedData;
+      });
+
+      showToast(`'${savedProfile.name}'님의 프로필이 성공적으로 변경되었어요!`);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      console.error("프로필 수정 실패:", error);
+      showToast("프로필 수정 실패: " + (err?.message || "다시 시도해 주세요"));
+      throw error;
+    } finally {
       setIsUpdating(false);
       setUpdateMessage("");
     }
@@ -641,6 +718,8 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
                   socials={data.socials}
                   slug={data.slug}
                   onShowToast={showToast}
+                  onUpdateProfile={handleUpdateProfile}
+                  isEditable={Boolean(user)}
                 />
 
                 {/* ======================================================= */}

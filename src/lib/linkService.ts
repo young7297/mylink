@@ -10,11 +10,12 @@ import {
   updateDoc,
   query,
   orderBy,
+  where,
   QuerySnapshot,
   DocumentData,
   QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { LinkItem, UserProfile } from "@/types/link";
+import { LinkItem, UserProfile, SocialLinks } from "@/types/link";
 import { getEmailPrefix } from "@/lib/utils";
 
 /**
@@ -78,12 +79,13 @@ export async function getUserProfileFromFirestore(uid: string): Promise<UserProf
     if (!snap.exists()) return null;
     const data = snap.data();
     const email = data.email || "";
-    const displayName = getEmailPrefix(email, data.name || "사용자");
+    // 사용자가 직접 설정한 이름이 있으면 최우선 적용, 없을 때만 이메일 접두사/기본값 사용
+    const displayName = (data.name as string)?.trim() || getEmailPrefix(email, "사용자");
     return {
       uid,
       name: displayName,
       email,
-      bio: data.bio || "나만의 링크를 한곳에서 관리하고 공유해요.",
+      bio: data.bio ?? "나만의 링크를 한곳에서 관리하고 공유해요.",
       avatarUrl: data.avatarUrl || "/profile.png",
       jobTitle: data.jobTitle || "마이페이지 회원",
       location: data.location || "대한민국",
@@ -110,11 +112,11 @@ export async function syncUserProfileToFirestore(authUser: {
   const uid = authUser.uid;
   const now = new Date().toISOString();
   const email = authUser.email || "";
-  const displayName = getEmailPrefix(email, authUser.displayName || "Google 사용자");
+  const fallbackName = getEmailPrefix(email, authUser.displayName || "Google 사용자");
 
   const defaultProfile: UserProfile = {
     uid,
-    name: displayName,
+    name: fallbackName,
     email,
     avatarUrl: authUser.photoURL || "/profile.png",
     bio: "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
@@ -138,14 +140,16 @@ export async function syncUserProfileToFirestore(authUser: {
       });
       return defaultProfile;
     } else {
-      // 기존 문서가 존재하면 이메일 앞부분 기반으로 display name 최신화
+      // 기존 문서가 존재하면 사용자가 설정해둔 기존 이름(name)을 유지
       const existing = snap.data();
+      const preservedName = (existing.name as string)?.trim() || fallbackName;
+
       const updatedProfile: UserProfile = {
         uid,
-        name: displayName,
+        name: preservedName,
         email,
-        avatarUrl: authUser.photoURL || existing.avatarUrl || "/profile.png",
-        bio: existing.bio || "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
+        avatarUrl: existing.avatarUrl || authUser.photoURL || "/profile.png",
+        bio: existing.bio ?? "나만의 맞춤 링크를 한곳에서 관리하고 공유해요.",
         jobTitle: existing.jobTitle || "마이페이지 회원",
         location: existing.location || "대한민국",
         firestorePath: `user/${uid}/links`,
@@ -169,6 +173,103 @@ export async function syncUserProfileToFirestore(authUser: {
     console.warn("Failed to sync user profile with Firestore (fallback to auth profile):", error);
     return defaultProfile;
   }
+}
+
+/**
+ * Display Name(닉네임) 중복 검사
+ * - Firestore 'user' 컬렉션에서 'name' 필드가 동일한 다른 사용자 문서가 존재하는지 확인
+ * - currentUid가 주어지면 본인의 문서는 중복 대상에서 제외
+ */
+export async function checkDisplayNameDuplicate(
+  displayName: string,
+  currentUid?: string
+): Promise<{ isDuplicate: boolean; message: string }> {
+  const trimmed = displayName.trim();
+  if (!trimmed) {
+    return { isDuplicate: false, message: "닉네임을 입력해 주세요." };
+  }
+  if (trimmed.length < 2) {
+    return { isDuplicate: false, message: "닉네임은 최소 2자 이상 입력해 주세요." };
+  }
+  if (trimmed.length > 20) {
+    return { isDuplicate: false, message: "닉네임은 최대 20자까지 가능해요." };
+  }
+
+  try {
+    const usersCol = collection(db, "user");
+    const q = query(usersCol, where("name", "==", trimmed));
+    const snap = await getDocs(q);
+
+    // 본인(currentUid) 문서를 제외한 다른 사용자가 있는지 확인
+    const duplicates = snap.docs.filter((d) => d.id !== currentUid);
+    if (duplicates.length > 0) {
+      return {
+        isDuplicate: true,
+        message: "이미 다른 회원이 사용 중인 이름이에요.",
+      };
+    }
+    return {
+      isDuplicate: false,
+      message: "사용 가능한 멋진 이름이에요! ✓",
+    };
+  } catch (error) {
+    console.warn("닉네임 중복 확인 중 Firestore 쿼리 오류:", error);
+    // 권한 또는 네트워크 제한 시 fallback
+    return {
+      isDuplicate: false,
+      message: "중복 확인 조회를 완료할 수 없으나 저장 가능해요.",
+    };
+  }
+}
+
+/**
+ * user/{uid} 경로의 프로필 정보 수정
+ */
+export async function updateUserProfileInFirestore(
+  uid: string,
+  profileData: {
+    name: string;
+    bio?: string;
+    jobTitle?: string;
+    location?: string;
+    avatarUrl?: string;
+  },
+  socialsData?: Partial<SocialLinks>
+): Promise<UserProfile> {
+  if (!uid) throw new Error("사용자 UID가 필요합니다.");
+
+  const docRef = getUserDocRef(uid);
+  const now = new Date().toISOString();
+
+  const updatePayload: Record<string, unknown> = {
+    name: profileData.name.trim(),
+    updatedAt: now,
+  };
+
+  if (profileData.bio !== undefined) updatePayload.bio = profileData.bio.trim();
+  if (profileData.jobTitle !== undefined) updatePayload.jobTitle = profileData.jobTitle.trim();
+  if (profileData.location !== undefined) updatePayload.location = profileData.location.trim();
+  if (profileData.avatarUrl !== undefined) updatePayload.avatarUrl = profileData.avatarUrl.trim();
+  if (socialsData) updatePayload.socials = socialsData;
+
+  await setDoc(docRef, updatePayload, { merge: true });
+
+  const updatedSnap = await getDoc(docRef);
+  const data = updatedSnap.data() || {};
+
+  return {
+    uid,
+    name: (data.name as string) || profileData.name.trim(),
+    email: data.email || "",
+    bio: (data.bio as string) ?? "나만의 링크를 한곳에서 관리하고 공유해요.",
+    avatarUrl: (data.avatarUrl as string) || profileData.avatarUrl || "/profile.png",
+    jobTitle: (data.jobTitle as string) || profileData.jobTitle || "마이페이지 회원",
+    location: (data.location as string) || profileData.location || "대한민국",
+    firestorePath: `user/${uid}/links`,
+    isGoogleAuth: true,
+    createdAt: data.createdAt,
+    updatedAt: now,
+  };
 }
 
 /**
