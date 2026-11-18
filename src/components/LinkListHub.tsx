@@ -13,6 +13,7 @@ import AddLinkDialog from "@/components/AddLinkDialog";
 import DeleteLinkDialog from "@/components/DeleteLinkDialog";
 import { toast } from "sonner";
 import UnauthenticatedView from "@/components/UnauthenticatedView";
+import { useUpdateProfileMutation } from "@/hooks/useProfile";
 import {
   Search,
   X,
@@ -52,7 +53,6 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
     isLoading: isAuthLoading,
     signInWithGoogle,
     signOut,
-    updateProfile,
   } = useAuth();
 
   const [data, setData] = useState<MyLinkData | null>(null);
@@ -93,6 +93,67 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [updateMessage, setUpdateMessage] = useState<string>("");
+
+  // TanStack Query 기반 프로필 수정 뮤테이션 (낙관적 업데이트 Optimistic Update 적용)
+  const updateProfileMutation = useUpdateProfileMutation({
+    onOptimisticUpdate: (optimisticProfile, optimisticSocials) => {
+      // 1. 낙관적 업데이트: 서버 응답 전 즉시 화면과 localStorage 갱신 (0ms 지연)
+      setData((prev) => {
+        if (!prev) return prev;
+        const newSocials = optimisticSocials
+          ? { ...prev.socials, ...optimisticSocials }
+          : prev.socials;
+
+        const updatedData: MyLinkData = {
+          ...prev,
+          profile: optimisticProfile,
+          socials: newSocials,
+        };
+
+        if (user) {
+          try {
+            localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
+          } catch (e) {
+            console.warn("localStorage save error:", e);
+          }
+        }
+
+        return updatedData;
+      });
+
+      showToast(`'${optimisticProfile.name}'님의 프로필이 즉시 반영되었어요!`);
+    },
+    onRollback: (previousProfile) => {
+      // 2. 오류 발생 시 이전 프로필로 자동 롤백 (Rollback)
+      if (!previousProfile) return;
+      setData((prev) => {
+        if (!prev) return prev;
+        const rolledBackData: MyLinkData = {
+          ...prev,
+          profile: previousProfile,
+        };
+
+        if (user) {
+          try {
+            localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(rolledBackData));
+          } catch (e) {
+            console.warn("localStorage rollback error:", e);
+          }
+        }
+
+        return rolledBackData;
+      });
+      showToast("프로필 업데이트에 실패하여 이전 상태로 복구했어요.");
+    },
+    onSuccess: (savedProfile) => {
+      console.log("Firestore 프로필 저장 완료:", savedProfile.name);
+    },
+    onError: (error) => {
+      const err = error as { message?: string };
+      console.error("Firestore 프로필 저장 실패:", error);
+      showToast("저장 실패: " + (err?.message || "다시 시도해 주세요"));
+    },
+  });
 
   // Google 소셜 로그인 핸들러
   const handleGoogleLogin = async () => {
@@ -354,45 +415,20 @@ export default function LinkListHub({ slug = "dayoung" }: LinkListHubProps) {
       setIsUpdating(true);
       setUpdateMessage(`user/${user.uid}에 변경된 프로필을 저장하고 있어요...`);
 
-      const savedProfile = await updateProfile(
-        {
-          name: updatedProfileFields.name || data?.profile.name || "사용자",
+      // TanStack Query Mutation 실행 -> onMutate에서 0ms 낙관적 업데이트 즉시 반영
+      await updateProfileMutation.mutateAsync({
+        uid: user.uid,
+        profileData: {
+          name: updatedProfileFields.name || data.profile.name || "사용자",
           bio: updatedProfileFields.bio,
           jobTitle: updatedProfileFields.jobTitle,
           location: updatedProfileFields.location,
           avatarUrl: updatedProfileFields.avatarUrl,
         },
-        updatedSocialsFields
-      );
-
-      // 로컬 data 상태 및 localStorage 즉시 동기화
-      setData((prev) => {
-        if (!prev) return prev;
-        const newSocials = updatedSocialsFields
-          ? { ...prev.socials, ...updatedSocialsFields }
-          : prev.socials;
-
-        const updatedData: MyLinkData = {
-          ...prev,
-          profile: savedProfile,
-          socials: newSocials,
-        };
-
-        try {
-          localStorage.setItem(`mylink_data_${user.uid}`, JSON.stringify(updatedData));
-        } catch (e) {
-          console.warn("localStorage save error:", e);
-        }
-
-        return updatedData;
+        socialsData: updatedSocialsFields,
       });
-
-      showToast(`'${savedProfile.name}'님의 프로필이 성공적으로 변경되었어요!`);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
-      console.error("프로필 수정 실패:", error);
-      showToast("프로필 수정 실패: " + (err?.message || "다시 시도해 주세요"));
-      throw error;
+    } catch {
+      // 에러는 updateProfileMutation.onError에서 롤백 및 토스트 처리됨
     } finally {
       setIsUpdating(false);
       setUpdateMessage("");

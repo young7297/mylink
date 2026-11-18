@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { AuthProvider } from "@/lib/authContext";
+import QueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 
 export const viewport: Viewport = {
@@ -41,11 +42,13 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-[#f2f4f6] text-[#191f28]">
-        <AuthProvider>
-          <FirebaseAnalytics />
-          <Toaster />
-          {children}
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <FirebaseAnalytics />
+            <Toaster />
+            {children}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
