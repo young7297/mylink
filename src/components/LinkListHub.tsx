@@ -220,7 +220,7 @@ export default function LinkListHub({
 
     try {
       setIsRefreshing(true);
-      setUpdateMessage(`users/${uidToFetch}/links에서 최신 링크를 불러오고 있어요...`);
+      setUpdateMessage("최신 링크 목록을 불러오고 있어요...");
       const firestoreLinks = await getLinksFromFirestore(uidToFetch);
 
       setData((prev) => {
@@ -258,7 +258,7 @@ export default function LinkListHub({
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`users/${user.uid}/links에 새 링크를 저장하고 있어요...`);
+      setUpdateMessage("새 링크를 안전하게 저장하고 있어요...");
 
       // 1. Firestore users/{user.uid}/links 컬렉션에 추가
       const savedLink = await addLinkToFirestore(user.uid, newLinkData, 0);
@@ -308,7 +308,7 @@ export default function LinkListHub({
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`users/${user.uid}/links에서 링크를 삭제하고 있어요...`);
+      setUpdateMessage("링크를 삭제하고 있어요...");
 
       // 1. Firestore users/{user.uid}/links 경로에서 문서 삭제
       await deleteLinkFromFirestore(user.uid, linkToDelete.id);
@@ -348,7 +348,7 @@ export default function LinkListHub({
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`users/${user.uid}/links에 수정 내용을 저장하고 있어요...`);
+      setUpdateMessage("수정 내용을 저장하고 있어요...");
 
       const updatedAt = new Date().toISOString();
       const updatedWithTimestamp = {
@@ -395,7 +395,7 @@ export default function LinkListHub({
     try {
       setIsSeeding(true);
       setIsUpdating(true);
-      setUpdateMessage(`users/${user.uid}/links에 샘플 링크를 등록하고 있어요...`);
+      setUpdateMessage("샘플 링크를 등록하고 있어요...");
 
       const seeded = await seedSampleLinksToFirestore(user.uid, MOCK_MYLINK_DATA.links);
       setData((prev) => {
@@ -443,7 +443,7 @@ export default function LinkListHub({
 
     try {
       setIsUpdating(true);
-      setUpdateMessage(`users/${user.uid}에 변경된 프로필을 저장하고 있어요...`);
+      setUpdateMessage("변경된 프로필을 저장하고 있어요...");
 
       // TanStack Query Mutation 실행 -> onMutate에서 0ms 낙관적 업데이트 즉시 반영
       await updateProfileMutation.mutateAsync({
@@ -822,7 +822,7 @@ export default function LinkListHub({
                       onClick={handleRefresh}
                       disabled={isRefreshing || isUpdating}
                       className="gap-1 font-medium text-xs text-[#4e5968] h-8 px-2 sm:px-2.5 hidden md:flex cursor-pointer"
-                      title={`users/${targetUserId || user.uid}/links 새로고침`}
+                      title="최신 링크 목록 새로고침"
                     >
                       <RotateCcw
                         className={`w-3.5 h-3.5 ${
@@ -919,11 +919,8 @@ export default function LinkListHub({
                   <p className="text-sm font-semibold text-[#191f28]">
                     {routeDisplayName
                       ? `‘${routeDisplayName}’ 님의 링크를 불러오고 있어요`
-                      : "개인화 링크를 불러오고 있어요"}
+                      : "개인 링크 목록을 불러오고 있어요"}
                   </p>
-                  <code className="text-xs text-[#3182f6] font-mono bg-[#e8f3ff] px-2 py-0.5 rounded">
-                    users/{targetUserId || user?.uid || "..."}/links
-                  </code>
                 </div>
               </Card>
             ) : (
@@ -1113,7 +1110,7 @@ export default function LinkListHub({
                 <footer className="mt-8 text-center text-xs text-[#8b95a1] space-y-1">
                   <p>© 2026 마이페이지 · {data.profile.name}</p>
                   <p className="text-[11px] text-[#b0b8c1]">
-                    Firestore 경로: users/{targetUserId || user?.uid || "..."}/links · 토스 디자인 시스템(TDS) 준수
+                    토스 디자인 시스템(TDS) 가이드라인을 준수하여 제작되었어요
                   </p>
                 </footer>
 

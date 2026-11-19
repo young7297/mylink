@@ -47,11 +47,7 @@ export default function UnauthenticatedView({
 
         <p className="text-[14.5px] text-[#4e5968] leading-relaxed max-w-[420px] mx-auto mb-6 break-keep">
           마이페이지는 구글 계정으로 로그인한 뒤 사용할 수 있어요.
-          로그인 즉시 회원님 전용의{" "}
-          <strong className="text-[#3182f6] font-semibold bg-[#e8f3ff] px-1.5 py-0.5 rounded text-[13.5px] font-mono">
-            user/&#123;uid&#125;/links
-          </strong>{" "}
-          저장소가 활성화되어 링크를 안전하게 관리할 수 있어요.
+          로그인 즉시 회원님 전용의 클라우드 저장소가 활성화되어 링크를 안전하게 관리할 수 있어요.
         </p>
 
         {/* 메인 Google 로그인 CTA 버튼 */}
@@ -84,7 +80,7 @@ export default function UnauthenticatedView({
               <div>
                 <p className="text-[13px] font-bold text-[#191f28]">개인화 저장소</p>
                 <p className="text-[11.5px] text-[#6b7684] leading-snug">
-                  <code className="text-[#3182f6] font-mono">user/&#123;uid&#125;/links</code>에 나만의 링크가 안전하게 보관돼요
+                  클라우드 저장소에 나만의 링크가 안전하게 보관돼요
                 </p>
               </div>
             </div>
@@ -173,7 +169,7 @@ export default function UnauthenticatedView({
               </div>
               <div>
                 <p className="text-sm font-bold text-[#191f28]">Firestore 개인 링크 허브</p>
-                <p className="text-xs text-[#8b95a1]">user/&#123;uid&#125;/links 경로에 저장된 개인 링크</p>
+                <p className="text-xs text-[#8b95a1]">회원님만을 위해 안전하게 보관된 맞춤 링크</p>
               </div>
             </div>
             <ExternalLink className="w-4 h-4 text-[#8b95a1]" />

@@ -12,7 +12,6 @@ import {
   Share2,
   Copy,
   Check,
-  Database,
   Pencil,
 } from "@/components/icons";
 import EditProfileDialog from "@/components/EditProfileDialog";
@@ -202,25 +201,6 @@ export default function ProfileHeader({
           )}
         </div>
       </div>
-
-      {/* 3. Firestore 개인화 경로 표시 영역 (user/{uid}/links) */}
-      {profile.uid && (
-        <div className="mt-4 p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-[#475569] min-w-0">
-            <Database className="w-3.5 h-3.5 text-[#3182f6] shrink-0" />
-            <span className="text-[#64748b] shrink-0 font-medium">개인화 경로:</span>
-            <code className="px-1.5 py-0.5 rounded bg-[#e8f3ff] text-[#3182f6] font-mono font-semibold text-[11.5px] truncate">
-              user/{profile.uid}/links
-            </code>
-          </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] shrink-0 font-mono">
-            <span>UID:</span>
-            <span className="text-[#1e293b] font-medium" title={profile.uid}>
-              {profile.uid.slice(0, 8)}...
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* 3. 소셜 링크 칩 바 */}
       <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[#e5e8eb]/70 flex-wrap">
