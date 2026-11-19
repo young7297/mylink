@@ -93,7 +93,7 @@ export default function ProfileDropdown({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="flex items-center gap-1.5 bg-white pl-1.5 pr-2 py-1 rounded-full border border-[#e5e8eb] shadow-2xs hover:border-[#b0b8c1] hover:bg-[#f9fafb] transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#3182f6] max-w-[140px] sm:max-w-[180px]"
+        className="flex items-center gap-1.5 bg-white pl-1.5 pr-2 py-1 rounded-full border border-[#e5e8eb] shadow-2xs hover:border-[#b0b8c1] hover:bg-[#f9fafb] transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#3182f6] max-w-[140px] sm:max-w-[180px] shrink-0 whitespace-nowrap"
         title={`${displayName} 프로필 메뉴 열기`}
       >
         <Avatar size="sm" className="w-6 h-6 shrink-0 border-0">
@@ -183,7 +183,7 @@ export default function ProfileDropdown({
                   <ExternalLink className="w-3.5 h-3.5 text-[#3182f6] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 <p className="text-[11px] text-[#8b95a1] truncate">
-                  /{displayName} 내 링크 모음 허브로 이동
+                  /{displayName || "내페이지"} 내 링크 모음 허브로 이동
                 </p>
               </div>
             </Link>

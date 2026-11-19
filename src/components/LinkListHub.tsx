@@ -39,7 +39,7 @@ import {
   getUserByDisplayName,
   recordLinkClick,
 } from "@/lib/linkService";
-import { useAuth } from "@/lib/authContext";
+import { useAuth, getAuthErrorMessage } from "@/lib/authContext";
 import { getEmailPrefix } from "@/lib/utils";
 
 // TDS 기반 UI 컴포넌트
@@ -192,9 +192,9 @@ export default function LinkListHub({
         showToast(`환영합니다, ${welcomeName}님!`);
       }
     } catch (error: unknown) {
-      const err = error as { message?: string };
       console.error("Google 로그인 실패:", error);
-      showToast("로그인 실패: " + (err?.message || "다시 시도해 주세요"));
+      const friendlyMessage = getAuthErrorMessage(error);
+      showToast(friendlyMessage);
     } finally {
       setIsLoggingIn(false);
     }
@@ -729,15 +729,14 @@ export default function LinkListHub({
                   <span>{isLoggingIn ? "로그인 중..." : "Google 로그인"}</span>
                 </Button>
               ) : (
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <Link
                     href={`/${encodeURIComponent(myDisplayName)}`}
-                    className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+                    className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group whitespace-nowrap shrink-0"
                     title={`${myDisplayName}님의 개인 페이지로 이동`}
                   >
                     <User className="w-3.5 h-3.5 text-white shrink-0" />
-                    <span className="hidden sm:inline">내 페이지 바로가기</span>
-                    <span className="sm:hidden">내 페이지</span>
+                    <span className="whitespace-nowrap font-medium">내 페이지 바로가기</span>
                     <ArrowUpRight className="w-3 h-3 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
                   </Link>
 
@@ -790,16 +789,15 @@ export default function LinkListHub({
               </Button>
             ) : (
               /* 로그인 된 상태: 헤더 개인별 페이지 이동 버튼, 프로필 드롭다운, 링크 추가 */
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {/* 1) 헤더 내 페이지 바로가기 버튼 (Primary 디자인) */}
                 <Link
                   href={`/${encodeURIComponent(myDisplayName)}`}
-                  className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+                  className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-[#3182f6] hover:bg-[#256cd8] active:bg-[#1b56b3] text-white shadow-sm font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer group whitespace-nowrap shrink-0"
                   title={`${myDisplayName}님의 개인 페이지로 이동`}
                 >
                   <User className="w-3.5 h-3.5 text-white shrink-0" />
-                  <span className="hidden sm:inline">내 페이지 바로가기</span>
-                  <span className="sm:hidden">내 페이지</span>
+                  <span className="whitespace-nowrap font-medium">내 페이지 바로가기</span>
                   <ArrowUpRight className="w-3 h-3 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
                 </Link>
 
